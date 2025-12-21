@@ -57,10 +57,10 @@ export async function createProject(data: {
       .insert({
         user_id: user.id,
         name: data.name,
-        address: data.address,
-        building_class: data.building_class,
-        description: data.description,
-        status: "draft",
+        address: data.address || null,
+        building_class: data.building_class || null,
+        description: data.description || null,
+        status: "draft" as const,
       })
       .select()
       .single();
