@@ -8,20 +8,23 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  * This is used for storing inspection photos and documents.
  */
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID!;
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY!;
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "buildsense-files";
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+export const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "buildsense-files";
 
 // Create S3 client configured for Cloudflare R2
-export const r2Client = new S3Client({
-  region: "auto",
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
-  },
-});
+// Returns null if R2 is not configured (for development)
+export const r2Client = R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY
+  ? new S3Client({
+      region: "auto",
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY,
+      },
+    })
+  : null;
 
 /**
  * Generate a presigned URL for uploading a file to R2
@@ -32,6 +35,10 @@ export const r2Client = new S3Client({
  * @returns Presigned URL for uploading
  */
 export async function getUploadUrl(key: string, contentType: string, expiresIn = 3600): Promise<string> {
+  if (!r2Client) {
+    throw new Error("R2 storage is not configured");
+  }
+  
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: key,
@@ -49,6 +56,10 @@ export async function getUploadUrl(key: string, contentType: string, expiresIn =
  * @returns Presigned URL for downloading
  */
 export async function getDownloadUrl(key: string, expiresIn = 3600): Promise<string> {
+  if (!r2Client) {
+    throw new Error("R2 storage is not configured");
+  }
+  
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: key,

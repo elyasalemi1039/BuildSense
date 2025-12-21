@@ -1,0 +1,336 @@
+# BuildSense — NCC Digestion System (Admin + Backend) Technical Specification
+
+## Goal
+Build a future-proof NCC ingestion (“digestion”) system that allows an ADMIN to upload a ZIP containing ALL NCC XML files (folder) for a given edition/overlay, parse and normalize into a stable internal schema (clause graph), build search indexes, and publish an “active ruleset” for new projects while preserving “pinned” rulesets for existing projects.
+
+We are using:
+- Next.js (App Router) + TypeScript
+- Supabase (Postgres + Auth + RLS)
+- Cloudflare R2 (object storage) for raw uploads + parsed artifacts
+- Tailwind + shadcn/ui for admin UI
+
+Key principles:
+1) Treat NCC as versioned data: base edition + overlays (amendments + state variations).
+2) Never mutate published rulesets in place. Ingestion writes to DRAFT tables/namespace; publish flips pointers.
+3) Projects are pinned to an edition+overlay set (“as-at”), so future NCC updates do not change existing projects.
+4) Ingestion is secure: admin only, server-side validation, DB constraints, RLS.
+
+---
+
+## High-level system components
+
+### A) Admin UI (Next.js)
+Routes:
+- /admin (dashboard)
+- /admin/ncc (editions + overlays list)
+- /admin/ncc/[id] (edition detail + jobs + actions)
+- /admin/ncc/[id]/diff (optional later)
+- /admin/mapping (scope->NCC node mapping UI, later)
+
+Admin features (MVP):
+- Create an Edition record (name, effective_date, type=BASE|OVERLAY, applies_to_base_edition_id for overlays, jurisdiction optional)
+- Upload ZIP (folder) to R2
+- Trigger PARSE job
+- Trigger INDEX job
+- Trigger PUBLISH action
+- View job logs + errors
+
+### B) Ingestion API (Next.js Route Handlers OR Supabase Edge Functions)
+Preferred: Next.js route handlers for easier Node libraries (zip/xml parsing).
+
+Endpoints:
+- POST /api/admin/ncc/create-edition
+- POST /api/admin/ncc/[id]/upload-url          -> returns presigned PUT URL for R2 (zip)
+- POST /api/admin/ncc/[id]/parse               -> starts parse job (server-side)
+- POST /api/admin/ncc/[id]/index               -> builds search vectors + optional embeddings
+- POST /api/admin/ncc/[id]/publish             -> marks edition/overlay as published; updates active pointers
+- GET  /api/admin/ncc/[id]/jobs                -> returns ingestion jobs + logs
+- GET  /api/admin/ncc                           -> list editions/overlays
+
+---
+
+## Folder Upload (ZIP) Requirements
+
+### Frontend upload:
+- User selects a .zip file containing the XML folder structure
+- UI shows file name + size + progress bar
+- Upload is done via a presigned PUT URL to R2
+- After upload success, call /parse
+
+### Backend upload security:
+- Only admins can request upload URL.
+- Upload URL is single-use (or short expiration) and path-scoped:
+  r2://ncc/raw/{edition_id}/{upload_id}.zip
+
+### Why ZIP:
+- consistent cross-browser
+- one object in R2
+- easy to store and reproduce parsing deterministically
+
+(Optionally add a second method later: directory multi-upload via <input webkitdirectory> and server-side manifest.)
+
+---
+
+## Ingestion Pipeline (Jobs)
+
+We track jobs in DB table `ncc_ingestion_jobs`.
+Job types: UPLOAD, PARSE, INDEX, PUBLISH
+Job states: queued, running, success, error
+Each job writes logs (append-only text entries) and a JSON error payload if failed.
+
+### Step 1) Upload
+- Admin uploads ZIP to R2 using presigned URL.
+- Create job row: type=UPLOAD, status=success, store r2_object_key.
+
+### Step 2) Parse (Normalize XML -> Clause Graph)
+Parse job reads ZIP from R2, extracts XML files, parses them, and writes normalized structures into Postgres.
+
+Important: parsing must be deterministic and idempotent:
+- If parse re-runs, it should either:
+  a) delete previous DRAFT nodes for that edition_id and re-insert, or
+  b) use a staging schema (recommended) keyed by edition_id+parse_run_id then swap pointer.
+For MVP, do (a): delete DRAFT rows then insert new rows within a transaction.
+
+Output tables:
+- ncc_editions
+- ncc_nodes
+- ncc_edges
+- ncc_terms
+- ncc_assets (optional: figures/tables references)
+- ncc_parse_runs (optional)
+
+Core concept: "Node" = any structural element (Volume, Section, Part, Clause, Subclause, Definition).
+We store nodes as a tree + graph:
+- tree via parent_id + sort_order
+- graph via edges for cross-references
+
+### Step 3) Index
+Build:
+- Postgres full-text search vector on node_text + headings
+- Optional pgvector embeddings (later)
+Store:
+- ncc_nodes.search_tsv
+- ncc_nodes.embedding (optional)
+
+### Step 4) Publish
+Publishing does NOT rewrite node contents.
+Publishing does:
+- set ncc_editions.status='published'
+- update `ncc_active_rulesets` pointer table for:
+  - latest base edition
+  - latest overlays per jurisdiction
+New projects default to active ruleset pointers.
+Existing projects keep pinned ids.
+
+---
+
+## Database Schema (Supabase / Postgres)
+
+### 1) Editions & Ruleset pointers
+Table: ncc_editions
+- id uuid pk
+- kind text check in ('BASE','OVERLAY')
+- name text (e.g. "NCC 2022", "NCC 2022 Amendment 2", "VIC Variations")
+- effective_date date
+- applies_to_base_edition_id uuid null (required for overlays)
+- jurisdiction text null (e.g. 'VIC','NSW' for state overlays)
+- status text check in ('draft','parsed','indexed','published','archived')
+- source_r2_key text null
+- created_at timestamptz
+- created_by uuid (auth user)
+
+Table: ncc_active_rulesets
+- id uuid pk
+- base_edition_id uuid
+- overlay_ids uuid[] (default empty)
+- jurisdiction text null
+- updated_at timestamptz
+
+### 2) Normalized NCC content
+Table: ncc_nodes
+- id uuid pk
+- edition_id uuid fk -> ncc_editions(id)
+- node_type text (Volume|Section|Part|Clause|Subclause|Definition|Appendix|Figure|Table|Note)
+- official_ref text null (e.g. "H1D1", "F6D2" - may be null for non-clauses)
+- title text null
+- node_text text null (full text, if permitted)
+- parent_id uuid null (self FK)
+- sort_order int
+- path text (materialized path like "/V2/H/1/H1D1")
+- hash text (content hash for diff)
+- meta jsonb (raw attributes from XML, eg numbering)
+- status text default 'draft' (optional)
+- created_at timestamptz
+
+Table: ncc_edges
+- id uuid pk
+- edition_id uuid fk
+- from_node_id uuid fk -> ncc_nodes(id)
+- to_node_id uuid fk -> ncc_nodes(id)
+- edge_type text (references|defines|amends|varies|satisfies|see_also)
+- meta jsonb
+- created_at timestamptz
+
+Table: ncc_terms
+- id uuid pk
+- edition_id uuid fk
+- term text
+- definition_node_id uuid fk -> ncc_nodes(id)
+- created_at timestamptz
+
+### 3) Ingestion jobs
+Table: ncc_ingestion_jobs
+- id uuid pk
+- edition_id uuid fk
+- job_type text (UPLOAD|PARSE|INDEX|PUBLISH)
+- status text (queued|running|success|error)
+- started_at timestamptz
+- finished_at timestamptz
+- logs text (append)
+- error jsonb null
+- created_by uuid
+- created_at timestamptz
+
+### 4) Project pinning
+Table: projects
+- id uuid pk
+- ...
+- ncc_base_edition_id uuid fk -> ncc_editions(id)
+- ncc_overlay_ids uuid[] default empty
+- ncc_as_at_date date
+- jurisdiction text (state/territory)
+- ...
+
+Rules:
+- default for new project:
+  - use ncc_active_rulesets for that jurisdiction (or global default)
+- never auto-upgrade existing projects
+
+### 5) Your digest layer (later)
+Table: scopes
+Table: scope_to_ncc_map
+Table: checklist_templates
+Table: evidence_templates
+etc.
+
+---
+
+## RLS / Security Requirements
+
+- ncc_* tables are ADMIN-write only.
+- Public users can read published editions and nodes ONLY (or read only via API).
+- The ingestion API must:
+  - verify JWT
+  - verify admin role claim (store user role in `profiles.role` or Supabase custom claims)
+- DO NOT allow client-side direct inserts into ncc_nodes.
+
+RLS Policies:
+- ncc_editions: select for admins; maybe select published for everyone if needed
+- ncc_nodes/ncc_edges: select only if edition.status='published' OR user is admin
+- ncc_ingestion_jobs: select for admins only
+
+---
+
+## File handling (ZIP)
+
+Implementation details:
+- Use a ZIP library to stream/extract (Node):
+  - unzipper or yauzl (streaming), or jszip (in-memory; avoid for huge zips)
+- Extract only *.xml entries; ignore others.
+- For each XML file:
+  - parse XML using fast-xml-parser (or similar)
+  - locate the structure: headings, clause identifiers, definitions, references
+  - create nodes and edges
+- Ensure you do not exceed serverless limits:
+  - Prefer running parse in a long-running environment if needed.
+  - For MVP: allow parse to run in a standard Node server context (Vercel functions may time out).
+  - Alternative: self-host ingestion worker (later) or Supabase background job pattern.
+
+For MVP with Vercel:
+- Keep parsing chunked:
+  - Create a parse job that processes N files per invocation.
+  - Store progress cursor in ncc_ingestion_jobs.error/meta or a separate table.
+  - Admin UI can “Continue parse” until complete.
+
+---
+
+## Publishing logic
+
+When Publish is clicked:
+1) Verify edition status is 'indexed' or at least 'parsed'.
+2) Update edition.status='published'
+3) Update ncc_active_rulesets based on:
+   - if edition.kind='BASE', set as new default base
+   - if edition.kind='OVERLAY', attach to active ruleset for matching jurisdiction/base edition
+4) Keep previous published editions as 'archived' but still queryable for pinned projects.
+
+---
+
+## Admin UI UX requirements (shadcn)
+- Editions list:
+  - status badges
+  - effective date
+  - action buttons
+- Edition detail:
+  - upload section with drag/drop zip
+  - job timeline
+  - Parse/Index/Publish buttons with disable logic
+  - log viewer panel
+- Strong feedback: show errors, show parsed counts (nodes, edges, terms)
+
+---
+
+## Deliverables to implement now (Cursor tasks)
+
+1) SQL migrations:
+- create tables listed above
+- add indexes:
+  - ncc_nodes(edition_id, official_ref)
+  - ncc_nodes(parent_id, sort_order)
+  - ncc_edges(from_node_id), ncc_edges(to_node_id)
+  - full text index on search_tsv if used
+
+2) Admin auth:
+- profiles table with role='admin' or Supabase custom claim
+- route protection middleware for /admin
+
+3) R2 integration:
+- presigned PUT for zip upload
+- ability to GET zip from R2 in parse endpoint
+
+4) Parse endpoint MVP:
+- accept edition_id
+- read zip from R2
+- extract xml
+- for each xml file:
+  - create nodes
+  - link parent-child
+  - store official_ref + title + text (if present)
+- write summary counts to job logs
+
+5) Index endpoint MVP:
+- build search_tsv from title + node_text
+
+6) Publish endpoint:
+- set status + update active rulesets pointers
+
+---
+
+## Non-goals for MVP
+- Semantic embeddings
+- Diff viewer
+- Auto scope mapping
+- Clause-to-checklist automatic generation (do later)
+
+---
+
+## Definition of Done (MVP)
+- Admin can upload ONE zip containing all xml for an edition
+- Click Parse -> nodes appear
+- Click Index -> searchable
+- Click Publish -> active ruleset updates
+- Project creation pins active ruleset
+- Existing projects remain pinned and stable even after publishing a new edition
+- All admin endpoints protected; RLS enforced
+
+END.
