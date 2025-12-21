@@ -16,7 +16,7 @@ export async function POST(
       .from("ncc_editions")
       .select("status")
       .eq("id", editionId)
-      .single();
+      .single() as { data: { status: string } | null; error: any };
 
     if (getError || !edition) {
       return errorResponse("Edition not found", 404);

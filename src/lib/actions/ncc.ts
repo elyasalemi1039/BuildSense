@@ -12,6 +12,10 @@ import type {
   NCCActiveRuleset 
 } from "@/types/ncc.types";
 
+// Helper for NCC tables that aren't in generated types yet
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = any;
+
 // ============================================
 // EDITIONS
 // ============================================
@@ -24,7 +28,7 @@ export async function getEditions(): Promise<{ editions: NCCEdition[]; error: st
     const { data: editions, error } = await supabase
       .from("ncc_editions")
       .select("*")
-      .order("effective_date", { ascending: false });
+      .order("effective_date", { ascending: false }) as { data: NCCEdition[] | null; error: any };
 
     if (error) {
       return { editions: [], error: error.message };
@@ -46,7 +50,7 @@ export async function getEdition(id: string): Promise<{ edition: NCCEdition | nu
       .from("ncc_editions")
       .select("*")
       .eq("id", id)
-      .single();
+      .single() as { data: NCCEdition | null; error: any };
 
     if (error) {
       return { edition: null, error: error.message };
@@ -126,7 +130,7 @@ export async function deleteEdition(id: string): Promise<{ error: string | null 
       .from("ncc_editions")
       .select("status")
       .eq("id", id)
-      .single();
+      .single() as { data: { status: string } | null; error: any };
 
     if (edition?.status === "published") {
       return { error: "Cannot delete a published edition" };
@@ -162,7 +166,7 @@ export async function getJobs(editionId: string): Promise<{ jobs: NCCIngestionJo
       .from("ncc_ingestion_jobs")
       .select("*")
       .eq("edition_id", editionId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as { data: NCCIngestionJob[] | null; error: any };
 
     if (error) {
       return { jobs: [], error: error.message };
@@ -187,7 +191,7 @@ export async function getLatestJob(editionId: string, jobType: string): Promise<
       .eq("job_type", jobType)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .single() as { data: NCCIngestionJob | null; error: any };
 
     if (error && error.code !== "PGRST116") { // PGRST116 = no rows
       return { job: null, error: error.message };
@@ -226,7 +230,7 @@ export async function getNodes(
       query = query.eq("parent_id", parentId);
     }
 
-    const { data: nodes, error } = await query;
+    const { data: nodes, error } = await query as { data: NCCNode[] | null; error: any };
 
     if (error) {
       return { nodes: [], error: error.message };
@@ -253,7 +257,7 @@ export async function searchNodes(
       .select("*")
       .eq("edition_id", editionId)
       .textSearch("search_tsv", searchQuery)
-      .limit(limit);
+      .limit(limit) as { data: NCCNode[] | null; error: any };
 
     if (error) {
       return { nodes: [], error: error.message };
@@ -278,7 +282,7 @@ export async function getActiveRulesets(): Promise<{ rulesets: NCCActiveRuleset[
     const { data: rulesets, error } = await supabase
       .from("ncc_active_rulesets")
       .select("*")
-      .order("jurisdiction", { ascending: true });
+      .order("jurisdiction", { ascending: true }) as { data: NCCActiveRuleset[] | null; error: any };
 
     if (error) {
       return { rulesets: [], error: error.message };
@@ -305,7 +309,7 @@ export async function publishEdition(editionId: string): Promise<{ error: string
       .from("ncc_editions")
       .select("*")
       .eq("id", editionId)
-      .single();
+      .single() as { data: NCCEdition | null; error: any };
 
     if (getError || !edition) {
       return { error: "Edition not found" };
@@ -317,7 +321,7 @@ export async function publishEdition(editionId: string): Promise<{ error: string
 
     // Start a transaction-like operation
     // 1. Update edition status to published
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as AnySupabase)
       .from("ncc_editions")
       .update({ status: "published", updated_at: new Date().toISOString() })
       .eq("id", editionId);
@@ -334,7 +338,7 @@ export async function publishEdition(editionId: string): Promise<{ error: string
         .select("id")
         .is("jurisdiction", null)
         .eq("is_default", true)
-        .single();
+        .single() as { data: { id: string } | null; error: any };
 
       if (existing) {
         // Archive the old base edition and update the ruleset
@@ -342,16 +346,16 @@ export async function publishEdition(editionId: string): Promise<{ error: string
           .from("ncc_active_rulesets")
           .select("base_edition_id")
           .eq("id", existing.id)
-          .single();
+          .single() as { data: { base_edition_id: string } | null; error: any };
 
         if (oldRuleset) {
-          await supabase
+          await (supabase as AnySupabase)
             .from("ncc_editions")
             .update({ status: "archived" })
             .eq("id", oldRuleset.base_edition_id);
         }
 
-        await supabase
+        await (supabase as AnySupabase)
           .from("ncc_active_rulesets")
           .update({
             base_edition_id: editionId,
@@ -372,22 +376,22 @@ export async function publishEdition(editionId: string): Promise<{ error: string
       }
     } else if (edition.kind === "OVERLAY" && edition.jurisdiction) {
       // Update or create jurisdiction-specific ruleset
-      const { data: existing } = await supabase
+      const { data: existingOverlay } = await supabase
         .from("ncc_active_rulesets")
         .select("id, overlay_ids")
         .eq("jurisdiction", edition.jurisdiction)
-        .single();
+        .single() as { data: { id: string; overlay_ids: string[] | null } | null; error: any };
 
-      if (existing) {
-        const newOverlayIds = [...(existing.overlay_ids || []), editionId];
-        await supabase
+      if (existingOverlay) {
+        const newOverlayIds = [...(existingOverlay.overlay_ids || []), editionId];
+        await (supabase as AnySupabase)
           .from("ncc_active_rulesets")
           .update({
             overlay_ids: newOverlayIds,
             updated_at: new Date().toISOString(),
             updated_by: userId,
           })
-          .eq("id", existing.id);
+          .eq("id", existingOverlay.id);
       }
       // Note: If no ruleset exists for this jurisdiction, the overlay won't be attached
       // This is intentional - a base ruleset should exist first
