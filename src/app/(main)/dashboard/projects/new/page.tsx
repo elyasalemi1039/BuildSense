@@ -73,7 +73,7 @@ export default function NewProjectPage() {
         toast.success("Project created!", {
           description: "Your project has been created successfully.",
         });
-        router.push("/projects");
+        router.push("/dashboard/projects");
       }
     } catch (error) {
       console.error("Create project error:", error);
@@ -87,7 +87,7 @@ export default function NewProjectPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/projects">
+        <Link href="/dashboard/projects">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Projects
@@ -186,7 +186,7 @@ export default function NewProjectPage() {
                 <Button type="submit" disabled={isLoading}>
                   {isLoading ? "Creating..." : "Create Project"}
                 </Button>
-                <Link href="/projects">
+                <Link href="/dashboard/projects">
                   <Button type="button" variant="outline" disabled={isLoading}>
                     Cancel
                   </Button>

@@ -17,7 +17,7 @@ export default async function ProjectsPage() {
           <h1 className="font-semibold text-2xl text-primary">Projects</h1>
           <p className="text-muted-foreground">Select a project to view details and compliance information</p>
         </div>
-        <Link href="/projects/new">
+        <Link href="/dashboard/projects/new">
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
             <FolderPlus className="mr-2 h-4 w-4" />
             New Project
@@ -42,7 +42,7 @@ export default async function ProjectsPage() {
             <CardDescription>Get started by creating your first project</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center pb-6">
-            <Link href="/projects/new">
+            <Link href="/dashboard/projects/new">
               <Button>
                 <FolderPlus className="mr-2 h-4 w-4" />
                 Create Project
@@ -53,7 +53,7 @@ export default async function ProjectsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <Link key={project.id} href={`/projects/${project.id}`}>
+            <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
               <Card className="hover:border-primary hover:shadow-lg cursor-pointer transition-all">
                 <CardHeader>
                   <div className="flex items-start justify-between">

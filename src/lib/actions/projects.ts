@@ -73,7 +73,7 @@ export async function createProject(data: {
       return { error: error.message };
     }
 
-    revalidatePath("/projects");
+    revalidatePath("/dashboard/projects");
     return { project, error: null };
   } catch (error) {
     console.error("Create project error:", error);

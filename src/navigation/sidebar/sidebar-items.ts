@@ -41,7 +41,7 @@ export const sidebarItems: NavGroup[] = [
       },
       {
         title: "Projects",
-        url: "/projects",
+        url: "/dashboard/projects",
         icon: Folder,
       },
     ],

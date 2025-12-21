@@ -1,11 +1,148 @@
 /* BuildSense Theme Preset
    Primary colors:
-   - #051733 (Dark Navy) - Main background
+   - #051733 (Dark Navy) - Main background (dark mode)
    - #f17b20 (Orange) - Primary accent/headers
-   - White - Normal text
+   - White - Normal text (dark mode) / Navy text (light mode)
    - Status colors: green, red, yellow
 */
 
+/* ==========================================
+   DARK MODE (default)
+   ========================================== */
+:root[data-theme-preset="buildsense"].dark,
+.dark[data-theme-preset="buildsense"] {
+  --radius: 0.5rem;
+
+  /* Main background - Dark Navy #051733 */
+  --background: #051733;
+  --foreground: #ffffff;
+
+  /* Cards slightly lighter than background */
+  --card: #0a2444;
+  --card-foreground: #ffffff;
+
+  /* Popover */
+  --popover: #0d2d52;
+  --popover-foreground: #ffffff;
+
+  /* Primary - Orange #f17b20 */
+  --primary: #f17b20;
+  --primary-foreground: #051733;
+
+  /* Secondary */
+  --secondary: #0d2d52;
+  --secondary-foreground: #ffffff;
+
+  /* Muted */
+  --muted: #0a2444;
+  --muted-foreground: #94a3b8;
+
+  /* Accent - Orange */
+  --accent: #f17b20;
+  --accent-foreground: #051733;
+
+  /* Destructive - Red for errors */
+  --destructive: #ef4444;
+
+  /* Borders and inputs */
+  --border: #1e3a5f;
+  --input: #0d2d52;
+  --ring: #f17b20;
+
+  /* Charts - Orange gradient */
+  --chart-1: #f17b20;
+  --chart-2: #f59e4d;
+  --chart-3: #f8b97a;
+  --chart-4: #fad4a7;
+  --chart-5: #fcefd4;
+
+  /* Sidebar - Slightly darker navy */
+  --sidebar: #030f22;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #f17b20;
+  --sidebar-primary-foreground: #051733;
+  --sidebar-accent: #0a2444;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1e3a5f;
+  --sidebar-ring: #f17b20;
+
+  /* Status colors */
+  --success: #22c55e;
+  --warning: #eab308;
+  --info: #3b82f6;
+
+  color-scheme: dark;
+}
+
+/* ==========================================
+   LIGHT MODE
+   ========================================== */
+:root[data-theme-preset="buildsense"].light,
+.light[data-theme-preset="buildsense"] {
+  --radius: 0.5rem;
+
+  /* Main background - White */
+  --background: #ffffff;
+  --foreground: #051733;
+
+  /* Cards - Light gray */
+  --card: #f8fafc;
+  --card-foreground: #051733;
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #051733;
+
+  /* Primary - Orange #f17b20 */
+  --primary: #f17b20;
+  --primary-foreground: #ffffff;
+
+  /* Secondary - Light navy tint */
+  --secondary: #e2e8f0;
+  --secondary-foreground: #051733;
+
+  /* Muted */
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  /* Accent - Orange */
+  --accent: #f17b20;
+  --accent-foreground: #ffffff;
+
+  /* Destructive - Red for errors */
+  --destructive: #ef4444;
+
+  /* Borders and inputs */
+  --border: #e2e8f0;
+  --input: #f1f5f9;
+  --ring: #f17b20;
+
+  /* Charts - Orange gradient */
+  --chart-1: #f17b20;
+  --chart-2: #f59e4d;
+  --chart-3: #f8b97a;
+  --chart-4: #fad4a7;
+  --chart-5: #fcefd4;
+
+  /* Sidebar - Navy background for contrast */
+  --sidebar: #051733;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #f17b20;
+  --sidebar-primary-foreground: #051733;
+  --sidebar-accent: #0a2444;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1e3a5f;
+  --sidebar-ring: #f17b20;
+
+  /* Status colors */
+  --success: #22c55e;
+  --warning: #eab308;
+  --info: #3b82f6;
+
+  color-scheme: light;
+}
+
+/* Fallback for just the preset attribute (defaults to dark) */
 :root[data-theme-preset="buildsense"],
 [data-theme-preset="buildsense"] {
   --radius: 0.5rem;
@@ -67,9 +204,4 @@
   --success: #22c55e;
   --warning: #eab308;
   --info: #3b82f6;
-}
-
-/* Force dark class for BuildSense preset */
-:root[data-theme-preset="buildsense"] {
-  color-scheme: dark;
 }

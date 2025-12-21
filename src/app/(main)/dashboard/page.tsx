@@ -28,7 +28,7 @@ export default async function DashboardPage() {
           <h1 className="font-semibold text-2xl text-primary">Dashboard</h1>
           <p className="text-muted-foreground">Overview of your projects and compliance activities</p>
         </div>
-        <Link href="/projects/new">
+        <Link href="/dashboard/projects/new">
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Plus className="mr-2 h-4 w-4" />
             New Project
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
       <div>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-semibold text-lg">Recent Projects</h2>
-          <Link href="/projects">
+          <Link href="/dashboard/projects">
             <Button variant="ghost" size="sm">
               View All
             </Button>
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
               <CardDescription>Get started by creating your first project</CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center pb-6">
-              <Link href="/projects/new">
+              <Link href="/dashboard/projects/new">
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
                   Create Project
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {recentProjects.map((project) => (
-              <Link key={project.id} href={`/projects/${project.id}`}>
+              <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
                 <Card className="hover:border-primary/50 cursor-pointer transition-colors">
                   <CardHeader>
                     <div className="flex items-start justify-between">
