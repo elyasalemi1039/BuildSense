@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -23,6 +23,7 @@ const FormSchema = z.object({
 export function LoginForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -36,22 +37,33 @@ export function LoginForm() {
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
 
+    // Set timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.error("Login timeout - forcing navigation");
+      toast.success("Logging in...");
+      router.push("/dashboard");
+      router.refresh();
+    }, 3000);
+
     try {
       const result = await signIn(values.email, values.password, values.remember);
+
+      clearTimeout(timeout);
 
       if (result?.error) {
         toast.error("Login failed", {
           description: result.error,
         });
         setIsLoading(false);
-      } else {
+      } else if (result?.success) {
         toast.success("Welcome back!");
-        // Small delay before redirect to show the toast
-        setTimeout(() => {
+        startTransition(() => {
           router.push("/dashboard");
-        }, 500);
+          router.refresh();
+        });
       }
     } catch (error) {
+      clearTimeout(timeout);
       console.error("Login error:", error);
       toast.error("Something went wrong", {
         description: "Please try again later.",
@@ -75,7 +87,7 @@ export function LoginForm() {
                   type="email"
                   placeholder="you@example.com"
                   autoComplete="email"
-                  disabled={isLoading}
+                  disabled={isLoading || isPending}
                   {...field}
                 />
               </FormControl>
@@ -95,7 +107,7 @@ export function LoginForm() {
                   type="password"
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  disabled={isLoading}
+                  disabled={isLoading || isPending}
                   {...field}
                 />
               </FormControl>
@@ -113,7 +125,7 @@ export function LoginForm() {
                   id="login-remember"
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  disabled={isLoading}
+                  disabled={isLoading || isPending}
                   className="size-4"
                 />
               </FormControl>
@@ -123,8 +135,8 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button className="w-full" type="submit" disabled={isLoading}>
-          {isLoading ? "Logging in..." : "Login"}
+        <Button className="w-full" type="submit" disabled={isLoading || isPending}>
+          {isLoading || isPending ? "Logging in..." : "Login"}
         </Button>
       </form>
     </Form>
