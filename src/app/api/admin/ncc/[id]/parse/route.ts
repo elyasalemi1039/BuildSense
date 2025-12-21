@@ -4,6 +4,9 @@ import { requireAdmin, errorResponse, successResponse } from "@/lib/auth/admin";
 import { XMLParser } from "fast-xml-parser";
 import crypto from "crypto";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = any;
+
 // Maximum files to process per invocation (to stay within Vercel timeout)
 const FILES_PER_CHUNK = 5;
 // Maximum time to run before returning (in ms) - leave buffer for response
@@ -65,7 +68,7 @@ export async function POST(
       job = newJob;
     } else if (job.status === "queued") {
       // Update to running
-      await supabase
+      await (supabase as AnySupabase)
         .from("ncc_ingestion_jobs")
         .update({ 
           status: "running", 
@@ -105,7 +108,7 @@ export async function POST(
         .from("ncc_parse_progress")
         .insert(progressRecords as any);
 
-      await supabase
+      await (supabase as AnySupabase)
         .from("ncc_ingestion_jobs")
         .update({ 
           files_total: xmlFiles.length,
@@ -145,12 +148,12 @@ export async function POST(
       }
 
       // Mark as processing
-      await supabase
+      await (supabase as AnySupabase)
         .from("ncc_parse_progress")
         .update({ file_status: "processing" })
         .eq("id", fileProgress.id);
 
-      await supabase
+      await (supabase as AnySupabase)
         .from("ncc_ingestion_jobs")
         .update({ current_file: fileProgress.file_path })
         .eq("id", job.id);
@@ -171,7 +174,7 @@ export async function POST(
         );
 
         // Mark as completed
-        await supabase
+        await (supabase as AnySupabase)
           .from("ncc_parse_progress")
           .update({ 
             file_status: "completed",
@@ -184,7 +187,7 @@ export async function POST(
         totalNodesCreated += nodesCreated;
       } catch (error) {
         // Mark as error
-        await supabase
+        await (supabase as AnySupabase)
           .from("ncc_parse_progress")
           .update({ 
             file_status: "error",
@@ -207,7 +210,7 @@ export async function POST(
     const processedSoFar = completedCount?.length || 0;
     const progress = Math.round((processedSoFar / job.files_total) * 100);
 
-    await supabase
+    await (supabase as AnySupabase)
       .from("ncc_ingestion_jobs")
       .update({
         files_processed: processedSoFar,

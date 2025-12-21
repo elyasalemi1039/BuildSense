@@ -2,6 +2,9 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, errorResponse, successResponse } from "@/lib/auth/admin";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = any;
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -55,7 +58,7 @@ export async function POST(
 
     // Update the trigger to refresh search vectors
     // In PostgreSQL, we can force re-calculation by updating a column
-    const { error: updateError } = await supabase.rpc("refresh_ncc_search_vectors", {
+    const { error: updateError } = await (supabase as AnySupabase).rpc("refresh_ncc_search_vectors", {
       p_edition_id: editionId,
     });
 
@@ -67,7 +70,7 @@ export async function POST(
       : `Refreshed search vectors for ${nodeCount || 0} nodes\n`;
 
     // Update job to success
-    await supabase
+    await (supabase as AnySupabase)
       .from("ncc_ingestion_jobs")
       .update({
         status: "success",
@@ -78,7 +81,7 @@ export async function POST(
       .eq("id", job.id);
 
     // Update edition status
-    await supabase
+    await (supabase as AnySupabase)
       .from("ncc_editions")
       .update({ 
         status: "indexed",
