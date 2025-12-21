@@ -36,16 +36,27 @@ export function LoginForm() {
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
 
-    const result = await signIn(values.email, values.password, values.remember);
+    try {
+      const result = await signIn(values.email, values.password, values.remember);
 
-    if (result?.error) {
-      toast.error("Login failed", {
-        description: result.error,
+      if (result?.error) {
+        toast.error("Login failed", {
+          description: result.error,
+        });
+        setIsLoading(false);
+      } else {
+        toast.success("Welcome back!");
+        // Small delay before redirect to show the toast
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Something went wrong", {
+        description: "Please try again later.",
       });
       setIsLoading(false);
-    } else {
-      toast.success("Welcome back!");
-      router.push("/dashboard");
     }
   };
 

@@ -42,28 +42,38 @@ export function SignUpForm() {
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
 
-    const formData = new FormData();
-    formData.append("full_name", values.full_name);
-    formData.append("email", values.email);
-    formData.append("password", values.password);
+    try {
+      const formData = new FormData();
+      formData.append("full_name", values.full_name);
+      formData.append("email", values.email);
+      formData.append("password", values.password);
 
-    const result = await signUp(formData);
+      const result = await signUp(formData);
 
-    if (result?.error) {
-      toast.error("Sign up failed", {
-        description: result.error,
+      if (result?.error) {
+        toast.error("Sign up failed", {
+          description: result.error,
+        });
+        setIsLoading(false);
+      } else if (result?.requiresEmailConfirmation) {
+        toast.info("Check your email", {
+          description: result.message,
+        });
+        setIsLoading(false);
+      } else {
+        toast.success("Account created!", {
+          description: "Welcome to BuildSense.",
+        });
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast.error("Something went wrong", {
+        description: "Please try again later.",
       });
       setIsLoading(false);
-    } else if (result?.requiresEmailConfirmation) {
-      toast.info("Check your email", {
-        description: result.message,
-      });
-      setIsLoading(false);
-    } else {
-      toast.success("Account created!", {
-        description: "Welcome to BuildSense.",
-      });
-      router.push("/dashboard");
     }
   };
 
