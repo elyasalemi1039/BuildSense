@@ -8,6 +8,7 @@ import { useShallow } from "zustand/react/shallow";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -18,6 +19,7 @@ import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
 import { NavMain } from "./nav-main";
+import { UserNav } from "./user-nav";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
@@ -37,7 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="h-10">
-              <Link prefetch={false} href="/dashboard/default" className="flex items-center gap-2">
+              <Link prefetch={false} href="/dashboard" className="flex items-center gap-2">
                 <Image
                   src="/logos/buildsense-logo-cropped.png"
                   alt="BuildSense Logo"
@@ -54,6 +56,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={sidebarItems} />
       </SidebarContent>
+      <SidebarFooter>
+        <UserNav />
+      </SidebarFooter>
     </Sidebar>
   );
 }
