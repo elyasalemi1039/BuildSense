@@ -37,13 +37,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="h-10">
+            <SidebarMenuButton asChild className="h-14">
               <Link prefetch={false} href="/dashboard" className="flex items-center gap-2">
                 <Image
                   src="/logos/buildsense-logo-cropped.png"
                   alt="BuildSense Logo"
-                  width={32}
-                  height={32}
+                  width={48}
+                  height={48}
                   className="shrink-0"
                 />
               </Link>

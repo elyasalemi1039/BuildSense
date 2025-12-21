@@ -1,37 +1,38 @@
-import { Plus, ClipboardCheck } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function ChecklistPage() {
+export default function EvidencePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-xl">Compliance Checklist</h2>
-          <p className="text-muted-foreground">Track NCC compliance items for this project</p>
+          <h2 className="font-semibold text-xl">Evidence & Photos</h2>
+          <p className="text-muted-foreground">Upload and manage inspection photos and documents</p>
         </div>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Item
+          <Upload className="mr-2 h-4 w-4" />
+          Upload
         </Button>
       </div>
 
       <Card className="border-dashed">
         <CardHeader className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-            <ClipboardCheck className="h-6 w-6 text-primary" />
+            <Camera className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="mt-4">No checklist items</CardTitle>
-          <CardDescription>Start adding compliance items to track for this project</CardDescription>
+          <CardTitle className="mt-4">No evidence uploaded</CardTitle>
+          <CardDescription>Upload photos and documents to document compliance</CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center pb-6">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add First Item
+          <Button variant="outline">
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Evidence
           </Button>
         </CardContent>
       </Card>
     </div>
   );
 }
+

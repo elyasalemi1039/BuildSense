@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 
-import { ChartBar, Forklift, Gauge, GraduationCap, LayoutDashboard, Search, ShoppingBag } from "lucide-react";
+import { Building2, ClipboardCheck, FileText, LayoutDashboard, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,27 +11,20 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 
 const searchItems = [
-  { group: "Dashboards", icon: LayoutDashboard, label: "Default" },
-  { group: "Dashboards", icon: ChartBar, label: "CRM", disabled: true },
-  { group: "Dashboards", icon: Gauge, label: "Analytics", disabled: true },
-  { group: "Dashboards", icon: ShoppingBag, label: "E-Commerce", disabled: true },
-  { group: "Dashboards", icon: GraduationCap, label: "Academy", disabled: true },
-  { group: "Dashboards", icon: Forklift, label: "Logistics", disabled: true },
-  { group: "Authentication", label: "Login v1" },
-  { group: "Authentication", label: "Login v2" },
-  { group: "Authentication", label: "Register v1" },
-  { group: "Authentication", label: "Register v2" },
+  { group: "Navigation", icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { group: "Navigation", icon: Building2, label: "Projects", href: "/dashboard/projects" },
+  { group: "Actions", icon: ClipboardCheck, label: "New Project", href: "/dashboard/projects/new" },
+  { group: "Actions", icon: FileText, label: "NCC Search", href: "#" },
 ];
 
 export function SearchDialog() {
   const [open, setOpen] = React.useState(false);
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "j" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
       }
@@ -50,27 +43,33 @@ export function SearchDialog() {
         <Search className="size-4" />
         Search
         <kbd className="inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-medium text-[10px]">
-          <span className="text-xs">⌘</span>J
+          <span className="text-xs">⌘</span>K
         </kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search dashboards, users, and more…" />
+        <CommandInput placeholder="Search projects, pages..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          {[...new Set(searchItems.map((item) => item.group))].map((group, i) => (
-            <React.Fragment key={group}>
-              {i !== 0 && <CommandSeparator />}
-              <CommandGroup heading={group} key={group}>
-                {searchItems
-                  .filter((item) => item.group === group)
-                  .map((item) => (
-                    <CommandItem className="!py-1.5" key={item.label} onSelect={() => setOpen(false)}>
-                      {item.icon && <item.icon />}
-                      <span>{item.label}</span>
-                    </CommandItem>
-                  ))}
-              </CommandGroup>
-            </React.Fragment>
+          {[...new Set(searchItems.map((item) => item.group))].map((group) => (
+            <CommandGroup heading={group} key={group}>
+              {searchItems
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <CommandItem
+                    className="!py-1.5"
+                    key={item.label}
+                    onSelect={() => {
+                      setOpen(false);
+                      if (item.href !== "#") {
+                        window.location.href = item.href;
+                      }
+                    }}
+                  >
+                    {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                    <span>{item.label}</span>
+                  </CommandItem>
+                ))}
+            </CommandGroup>
           ))}
         </CommandList>
       </CommandDialog>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { ChevronsUpDown, LogOut, Settings, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -58,7 +58,6 @@ export function UserNav() {
                 <span className="truncate font-semibold">{profile.full_name || "User"}</span>
                 <span className="truncate text-xs text-muted-foreground">{profile.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
