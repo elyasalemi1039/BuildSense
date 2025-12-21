@@ -30,7 +30,7 @@ export async function POST(
     }
 
     // Create index job
-    const { data: job, error: jobError } = await supabase
+    const { data: job, error: jobError } = await (supabase as AnySupabase)
       .from("ncc_ingestion_jobs")
       .insert({
         edition_id: editionId,
@@ -39,9 +39,9 @@ export async function POST(
         started_at: new Date().toISOString(),
         logs: `Index job started at ${new Date().toISOString()}\n`,
         created_by: userId,
-      } as any)
+      })
       .select()
-      .single();
+      .single() as { data: { id: string; logs: string } | null; error: any };
 
     if (jobError || !job) {
       return errorResponse("Failed to create index job", 500);
