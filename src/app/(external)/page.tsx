@@ -61,7 +61,7 @@ export default function LandingPage() {
                 Log in
               </Button>
             </Link>
-            <Link href="/login">
+            <Link href="/sign-up">
               <Button className="bg-[#f17b20] text-white hover:bg-[#f17b20]/90">
                 Get Started
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -84,7 +84,7 @@ export default function LandingPage() {
               instantly check NCC compliance. Stop flipping through PDFs—let BuildSense do the thinking.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/login">
+              <Link href="/sign-up">
                 <Button size="lg" className="bg-[#f17b20] text-white hover:bg-[#f17b20]/90">
                   Start Free Trial
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -151,7 +151,7 @@ export default function LandingPage() {
             <p className="mt-4 text-white/70">
               Join builders across Australia who are saving time and reducing risk with BuildSense.
             </p>
-            <Link href="/login" className="mt-8 inline-block">
+            <Link href="/sign-up" className="mt-8 inline-block">
               <Button size="lg" className="bg-[#f17b20] text-white hover:bg-[#f17b20]/90">
                 Get Started Free
                 <ArrowRight className="ml-2 h-4 w-4" />

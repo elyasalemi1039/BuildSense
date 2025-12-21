@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,27 +8,32 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { signIn } from "@/lib/actions/auth";
+import { signUp } from "@/lib/actions/auth";
 
-const FormSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  remember: z.boolean().optional(),
-});
+const FormSchema = z
+  .object({
+    full_name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+    email: z.string().email({ message: "Please enter a valid email address." }),
+    password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+    confirm_password: z.string(),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    message: "Passwords don't match",
+    path: ["confirm_password"],
+  });
 
-export function LoginForm() {
-  const router = useRouter();
+export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
+      full_name: "",
       email: "",
       password: "",
-      remember: false,
+      confirm_password: "",
     },
   });
 
@@ -38,19 +42,22 @@ export function LoginForm() {
 
     try {
       const formData = new FormData();
+      formData.append("full_name", values.full_name);
       formData.append("email", values.email);
       formData.append("password", values.password);
 
-      const result = await signIn(formData);
+      const result = await signUp(formData);
 
       if (result?.error) {
-        toast.error("Login failed", {
+        toast.error("Sign up failed", {
           description: result.error,
         });
         setIsLoading(false);
       } else {
-        toast.success("Welcome back!");
-        // Redirect is handled by the signIn action
+        toast.success("Account created!", {
+          description: "Welcome to BuildSense.",
+        });
+        // Redirect is handled by the signUp action
       }
     } catch (error) {
       toast.error("Something went wrong", {
@@ -63,6 +70,26 @@ export function LoginForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="full_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Full Name</FormLabel>
+              <FormControl>
+                <Input
+                  id="full_name"
+                  type="text"
+                  placeholder="John Smith"
+                  autoComplete="name"
+                  disabled={isLoading}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="email"
@@ -94,7 +121,7 @@ export function LoginForm() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   disabled={isLoading}
                   {...field}
                 />
@@ -105,28 +132,29 @@ export function LoginForm() {
         />
         <FormField
           control={form.control}
-          name="remember"
+          name="confirm_password"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center">
+            <FormItem>
+              <FormLabel>Confirm Password</FormLabel>
               <FormControl>
-                <Checkbox
-                  id="login-remember"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
                   disabled={isLoading}
-                  className="size-4"
+                  {...field}
                 />
               </FormControl>
-              <FormLabel htmlFor="login-remember" className="ml-1 font-medium text-muted-foreground text-sm">
-                Remember me for 30 days
-              </FormLabel>
+              <FormMessage />
             </FormItem>
           )}
         />
         <Button className="w-full" type="submit" disabled={isLoading}>
-          {isLoading ? "Logging in..." : "Login"}
+          {isLoading ? "Creating account..." : "Create Account"}
         </Button>
       </form>
     </Form>
   );
 }
+
