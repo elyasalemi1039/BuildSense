@@ -82,10 +82,10 @@ export default async function ProjectsPage() {
                       <span className="font-medium">{project.building_class}</span>
                     </div>
                   )}
-                  {project.stage && (
+                  {project.construction_stage && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Stage:</span>
-                      <span className="font-medium">{project.stage}</span>
+                      <span className="font-medium">{project.construction_stage}</span>
                     </div>
                   )}
                 </CardContent>
