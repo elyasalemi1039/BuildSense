@@ -56,15 +56,15 @@ export async function createProject(data: {
     const insertData: ProjectInsert = {
       user_id: user.id,
       name: data.name,
-      address: data.address || null,
-      building_class: data.building_class || null,
-      description: data.description || null,
+      address: data.address ?? null,
+      building_class: data.building_class ?? null,
+      description: data.description ?? null,
       status: "draft",
     };
 
     const { data: project, error } = await supabase
       .from("projects")
-      .insert(insertData)
+      .insert(insertData as any)
       .select()
       .single();
 
