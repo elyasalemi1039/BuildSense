@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Building2 } from "lucide-react";
 
-import { SignUpForm } from "@/app/(main)/auth/_components/signup-form";
+import { SignUpForm } from "@/components/auth/signup-form";
 import { Separator } from "@/components/ui/separator";
 import { APP_CONFIG } from "@/config/app-config";
 

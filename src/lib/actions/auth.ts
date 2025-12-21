@@ -19,38 +19,50 @@ export async function signUp(formData: FormData) {
       data: {
         full_name: formData.get("full_name") as string,
       },
+      // Disable email confirmation for now (can enable later in Supabase dashboard)
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
     },
   };
 
-  const { error } = await supabase.auth.signUp(data);
+  const { error, data: signUpData } = await supabase.auth.signUp(data);
 
   if (error) {
     return { error: error.message };
   }
 
+  // Check if email confirmation is required
+  if (signUpData.user && !signUpData.session) {
+    return {
+      success: true,
+      requiresEmailConfirmation: true,
+      message: "Please check your email to confirm your account.",
+    };
+  }
+
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  return { success: true, requiresEmailConfirmation: false };
 }
 
 /**
  * Sign in an existing user
  */
-export async function signIn(formData: FormData) {
+export async function signIn(email: string, password: string, rememberMe?: boolean) {
   const supabase = await createClient();
 
-  const data = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-  };
-
-  const { error } = await supabase.auth.signInWithPassword(data);
+  const { error, data } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
     return { error: error.message };
   }
 
+  // If rememberMe is true, extend the session (Supabase handles this automatically with cookies)
+  // The session duration is controlled by Supabase settings (JWT expiry)
+
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  return { success: true };
 }
 
 /**
@@ -89,4 +101,3 @@ export async function getCurrentProfile() {
 
   return profile;
 }
-
