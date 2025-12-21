@@ -3,15 +3,11 @@ import {
   CheckSquare,
   ClipboardCheck,
   FileText,
-  Fingerprint,
-  FolderOpen,
   HelpCircle,
   type LucideIcon,
   Map,
-  MessageSquare,
   Settings,
   Sparkles,
-  Users,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -58,7 +54,7 @@ export const sidebarItems: NavGroup[] = [
       {
         title: "Projects",
         url: "/dashboard/coming-soon",
-        icon: FolderOpen,
+        icon: Building2,
         comingSoon: true,
       },
       {
@@ -105,12 +101,6 @@ export const sidebarItems: NavGroup[] = [
     label: "Account",
     items: [
       {
-        title: "Team",
-        url: "/dashboard/coming-soon",
-        icon: Users,
-        comingSoon: true,
-      },
-      {
         title: "Settings",
         url: "/dashboard/coming-soon",
         icon: Settings,
@@ -121,15 +111,6 @@ export const sidebarItems: NavGroup[] = [
         url: "/dashboard/coming-soon",
         icon: HelpCircle,
         comingSoon: true,
-      },
-      {
-        title: "Authentication",
-        url: "/auth",
-        icon: Fingerprint,
-        subItems: [
-          { title: "Login", url: "/auth/v2/login", newTab: true },
-          { title: "Register", url: "/auth/v2/register", newTab: true },
-        ],
       },
     ],
   },

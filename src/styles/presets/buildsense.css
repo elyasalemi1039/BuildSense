@@ -6,113 +6,70 @@
    - Status colors: green, red, yellow
 */
 
+:root[data-theme-preset="buildsense"],
 [data-theme-preset="buildsense"] {
-  /* Dark theme by default - professional construction industry feel */
   --radius: 0.5rem;
 
   /* Main background - Dark Navy #051733 */
-  --background: oklch(0.145 0.035 250);
-  --foreground: oklch(0.98 0 0);
+  --background: #051733;
+  --foreground: #ffffff;
 
   /* Cards slightly lighter than background */
-  --card: oklch(0.18 0.03 250);
-  --card-foreground: oklch(0.98 0 0);
+  --card: #0a2444;
+  --card-foreground: #ffffff;
 
   /* Popover */
-  --popover: oklch(0.2 0.025 250);
-  --popover-foreground: oklch(0.98 0 0);
+  --popover: #0d2d52;
+  --popover-foreground: #ffffff;
 
   /* Primary - Orange #f17b20 */
-  --primary: oklch(0.72 0.175 55);
-  --primary-foreground: oklch(0.145 0.035 250);
+  --primary: #f17b20;
+  --primary-foreground: #051733;
 
   /* Secondary */
-  --secondary: oklch(0.25 0.025 250);
-  --secondary-foreground: oklch(0.98 0 0);
+  --secondary: #0d2d52;
+  --secondary-foreground: #ffffff;
 
   /* Muted */
-  --muted: oklch(0.22 0.02 250);
-  --muted-foreground: oklch(0.65 0 0);
+  --muted: #0a2444;
+  --muted-foreground: #94a3b8;
 
-  /* Accent - Orange tint */
-  --accent: oklch(0.72 0.175 55);
-  --accent-foreground: oklch(0.145 0.035 250);
+  /* Accent - Orange */
+  --accent: #f17b20;
+  --accent-foreground: #051733;
 
   /* Destructive - Red for errors */
-  --destructive: oklch(0.65 0.2 25);
+  --destructive: #ef4444;
 
   /* Borders and inputs */
-  --border: oklch(0.3 0.02 250);
-  --input: oklch(0.25 0.02 250);
-  --ring: oklch(0.72 0.175 55);
+  --border: #1e3a5f;
+  --input: #0d2d52;
+  --ring: #f17b20;
 
   /* Charts - Orange gradient */
-  --chart-1: oklch(0.72 0.175 55);
-  --chart-2: oklch(0.62 0.15 55);
-  --chart-3: oklch(0.52 0.12 55);
-  --chart-4: oklch(0.42 0.09 55);
-  --chart-5: oklch(0.32 0.06 55);
+  --chart-1: #f17b20;
+  --chart-2: #f59e4d;
+  --chart-3: #f8b97a;
+  --chart-4: #fad4a7;
+  --chart-5: #fcefd4;
 
-  /* Sidebar - Slightly darker */
-  --sidebar: oklch(0.12 0.04 250);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.72 0.175 55);
-  --sidebar-primary-foreground: oklch(0.145 0.035 250);
-  --sidebar-accent: oklch(0.2 0.03 250);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.25 0.025 250);
-  --sidebar-ring: oklch(0.72 0.175 55);
+  /* Sidebar - Slightly darker navy */
+  --sidebar: #030f22;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #f17b20;
+  --sidebar-primary-foreground: #051733;
+  --sidebar-accent: #0a2444;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1e3a5f;
+  --sidebar-ring: #f17b20;
 
   /* Status colors */
-  --success: oklch(0.65 0.2 145);
-  --warning: oklch(0.75 0.18 85);
-  --info: oklch(0.65 0.15 230);
+  --success: #22c55e;
+  --warning: #eab308;
+  --info: #3b82f6;
 }
 
-/* Light mode variant for BuildSense */
-[data-theme-preset="buildsense"].light,
-.light[data-theme-preset="buildsense"] {
-  /* Light background */
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.145 0.035 250);
-
-  /* Cards */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0.035 250);
-
-  /* Popover */
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.035 250);
-
-  /* Primary - Orange stays the same */
-  --primary: oklch(0.68 0.185 55);
-  --primary-foreground: oklch(1 0 0);
-
-  /* Secondary */
-  --secondary: oklch(0.95 0.01 250);
-  --secondary-foreground: oklch(0.145 0.035 250);
-
-  /* Muted */
-  --muted: oklch(0.95 0.005 250);
-  --muted-foreground: oklch(0.45 0.02 250);
-
-  /* Accent */
-  --accent: oklch(0.68 0.185 55);
-  --accent-foreground: oklch(1 0 0);
-
-  /* Borders and inputs */
-  --border: oklch(0.9 0.01 250);
-  --input: oklch(0.92 0.01 250);
-  --ring: oklch(0.68 0.185 55);
-
-  /* Sidebar - Dark Navy for contrast */
-  --sidebar: oklch(0.145 0.035 250);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.72 0.175 55);
-  --sidebar-primary-foreground: oklch(0.145 0.035 250);
-  --sidebar-accent: oklch(0.2 0.03 250);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.25 0.025 250);
-  --sidebar-ring: oklch(0.72 0.175 55);
+/* Force dark class for BuildSense preset */
+:root[data-theme-preset="buildsense"] {
+  color-scheme: dark;
 }
-
