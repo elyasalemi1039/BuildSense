@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
+type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"];
 
 export async function getProjects(): Promise<{ projects: Project[]; error: string | null }> {
   try {
@@ -52,16 +53,18 @@ export async function createProject(data: {
       return { error: "Not authenticated" };
     }
 
+    const insertData: ProjectInsert = {
+      user_id: user.id,
+      name: data.name,
+      address: data.address || null,
+      building_class: data.building_class || null,
+      description: data.description || null,
+      status: "draft",
+    };
+
     const { data: project, error } = await supabase
       .from("projects")
-      .insert({
-        user_id: user.id,
-        name: data.name,
-        address: data.address || null,
-        building_class: data.building_class || null,
-        description: data.description || null,
-        status: "draft" as const,
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -77,4 +80,5 @@ export async function createProject(data: {
     return { error: "Failed to create project" };
   }
 }
+
 
