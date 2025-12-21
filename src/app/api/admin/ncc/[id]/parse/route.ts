@@ -7,6 +7,16 @@ import crypto from "crypto";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = any;
 
+// Job type for NCC ingestion jobs
+interface NCCJob {
+  id: string;
+  status: string;
+  logs: string;
+  files_total: number;
+  files_processed: number;
+  progress: number;
+}
+
 // Maximum files to process per invocation (to stay within Vercel timeout)
 const FILES_PER_CHUNK = 5;
 // Maximum time to run before returning (in ms) - leave buffer for response
@@ -37,7 +47,7 @@ export async function POST(
     const supabase = await createClient();
 
     // Get or create parse job
-    let { data: job } = await supabase
+    let { data: job } = await (supabase as AnySupabase)
       .from("ncc_ingestion_jobs")
       .select("*")
       .eq("edition_id", editionId)
@@ -45,11 +55,11 @@ export async function POST(
       .in("status", ["queued", "running", "partial"])
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .single() as { data: NCCJob | null };
 
     if (!job) {
       // Create new parse job
-      const { data: newJob, error: createError } = await supabase
+      const { data: newJob, error: createError } = await (supabase as AnySupabase)
         .from("ncc_ingestion_jobs")
         .insert({
           edition_id: editionId,
@@ -58,9 +68,9 @@ export async function POST(
           started_at: new Date().toISOString(),
           logs: `Parse job started at ${new Date().toISOString()}\n`,
           created_by: userId,
-        } as any)
+        })
         .select()
-        .single();
+        .single() as { data: NCCJob | null; error: any };
 
       if (createError || !newJob) {
         return errorResponse("Failed to create parse job", 500);
