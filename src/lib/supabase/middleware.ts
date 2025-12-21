@@ -15,29 +15,35 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          for (const { name, value } of cookiesToSet) {
+            request.cookies.set(name, value);
+          }
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          for (const { name, value, options } of cookiesToSet) {
+            supabaseResponse.cookies.set(name, value, options);
+          }
+        },
       },
-      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-        for (const { name, value } of cookiesToSet) {
-          request.cookies.set(name, value);
-        }
-        supabaseResponse = NextResponse.next({
-          request,
-        });
-        for (const { name, value, options } of cookiesToSet) {
-          supabaseResponse.cookies.set(name, value, options);
-        }
-      },
-    },
-  });
+    });
 
-  // IMPORTANT: Do not remove this line
-  // Refreshing the auth token
-  await supabase.auth.getUser();
+    // IMPORTANT: Do not remove this line
+    // Refreshing the auth token
+    await supabase.auth.getUser();
 
-  return supabaseResponse;
+    return supabaseResponse;
+  } catch (error) {
+    // If Supabase fails, just pass through without auth
+    console.error("Supabase middleware error:", error);
+    return NextResponse.next({ request });
+  }
 }
 

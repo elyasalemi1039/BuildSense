@@ -1,13 +1,8 @@
 import {
   Building2,
-  CheckSquare,
-  ClipboardCheck,
-  FileText,
-  HelpCircle,
+  Folder,
   type LucideIcon,
-  Map,
-  Settings,
-  Sparkles,
+  LayoutDashboard,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -38,79 +33,16 @@ export interface NavGroup {
 export const sidebarItems: NavGroup[] = [
   {
     id: 1,
-    label: "Dashboard",
     items: [
       {
-        title: "Overview",
-        url: "/dashboard/default",
-        icon: Building2,
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
       },
-    ],
-  },
-  {
-    id: 2,
-    label: "Compliance",
-    items: [
       {
         title: "Projects",
-        url: "/dashboard/coming-soon",
-        icon: Building2,
-        comingSoon: true,
-      },
-      {
-        title: "NCC Search",
-        url: "/dashboard/coming-soon",
-        icon: FileText,
-        comingSoon: true,
-      },
-      {
-        title: "Checklists",
-        url: "/dashboard/coming-soon",
-        icon: CheckSquare,
-        comingSoon: true,
-      },
-      {
-        title: "Inspections",
-        url: "/dashboard/coming-soon",
-        icon: ClipboardCheck,
-        comingSoon: true,
-      },
-      {
-        title: "Zone Lookup",
-        url: "/dashboard/coming-soon",
-        icon: Map,
-        comingSoon: true,
-      },
-    ],
-  },
-  {
-    id: 3,
-    label: "AI Tools",
-    items: [
-      {
-        title: "AI Copilot",
-        url: "/dashboard/coming-soon",
-        icon: Sparkles,
-        comingSoon: true,
-        isNew: true,
-      },
-    ],
-  },
-  {
-    id: 4,
-    label: "Account",
-    items: [
-      {
-        title: "Settings",
-        url: "/dashboard/coming-soon",
-        icon: Settings,
-        comingSoon: true,
-      },
-      {
-        title: "Help",
-        url: "/dashboard/coming-soon",
-        icon: HelpCircle,
-        comingSoon: true,
+        url: "/projects",
+        icon: Folder,
       },
     ],
   },
