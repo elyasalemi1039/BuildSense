@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 
-export async function getProjects() {
+type Project = Database["public"]["Tables"]["projects"]["Row"];
+
+export async function getProjects(): Promise<{ projects: Project[]; error: string | null }> {
   try {
     const supabase = await createClient();
     const {
