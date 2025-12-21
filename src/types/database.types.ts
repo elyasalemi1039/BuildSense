@@ -39,6 +39,12 @@ export interface Database {
           start_date: string | null;
           target_completion_date: string | null;
           actual_completion_date: string | null;
+          // New fields
+          project_type: "new_build" | "renovation" | "extension" | null;
+          ncc_context: "volume_one" | "volume_two" | null;
+          ncc_version: "ncc_2025" | "ncc_2022" | "ncc_2019" | null;
+          construction_value: number | null;
+          construction_scopes: string[] | null;
         };
         Insert: {
           id?: string;
@@ -65,6 +71,12 @@ export interface Database {
           start_date?: string | null;
           target_completion_date?: string | null;
           actual_completion_date?: string | null;
+          // New fields
+          project_type?: "new_build" | "renovation" | "extension" | null;
+          ncc_context?: "volume_one" | "volume_two" | null;
+          ncc_version?: "ncc_2025" | "ncc_2022" | "ncc_2019" | null;
+          construction_value?: number | null;
+          construction_scopes?: string[] | null;
         };
         Update: {
           id?: string;
@@ -91,6 +103,12 @@ export interface Database {
           start_date?: string | null;
           target_completion_date?: string | null;
           actual_completion_date?: string | null;
+          // New fields
+          project_type?: "new_build" | "renovation" | "extension" | null;
+          ncc_context?: "volume_one" | "volume_two" | null;
+          ncc_version?: "ncc_2025" | "ncc_2022" | "ncc_2019" | null;
+          construction_value?: number | null;
+          construction_scopes?: string[] | null;
         };
         Relationships: [];
       };

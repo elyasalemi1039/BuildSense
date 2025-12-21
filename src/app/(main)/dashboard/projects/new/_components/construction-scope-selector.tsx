@@ -7,32 +7,15 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import {
+  MAIN_CONSTRUCTION_SCOPES,
+  ADVANCED_CONSTRUCTION_SCOPES,
+} from "@/lib/constants/project-options";
 
 interface ConstructionScopeSelectorProps {
   selected: string[];
   onChange: (scopes: string[]) => void;
 }
-
-const mainScopes = [
-  { value: "structural", label: "Structural", description: "Foundations, framing, load-bearing elements" },
-  { value: "waterproofing", label: "Waterproofing", description: "Wet areas, roofing, external membranes" },
-  { value: "energy_efficiency", label: "Energy Efficiency", description: "Insulation, glazing, thermal performance" },
-  { value: "fire_safety", label: "Fire Safety", description: "Fire separation, detection, egress" },
-  { value: "accessibility", label: "Accessibility", description: "Access for people with disabilities" },
-  { value: "plumbing_drainage", label: "Plumbing & Drainage", description: "Water supply, sanitary drainage" },
-  { value: "termite_management", label: "Termite Management", description: "Termite barriers and protection" },
-  { value: "sound_insulation", label: "Sound Insulation", description: "Acoustic performance requirements" },
-];
-
-const advancedScopes = [
-  { value: "ventilation", label: "Ventilation & Condensation", description: "Natural and mechanical ventilation" },
-  { value: "hvac", label: "Mechanical Services (HVAC)", description: "Heating, cooling, air conditioning" },
-  { value: "electrical", label: "Electrical & Lighting", description: "Electrical installations, emergency lighting" },
-  { value: "egress", label: "Egress & Exits", description: "Exit paths, doors, stairways" },
-  { value: "health_amenity", label: "Health & Amenity", description: "Room heights, light, ventilation" },
-  { value: "stormwater", label: "Stormwater Management", description: "Drainage, detention, overflow" },
-  { value: "site_works", label: "Site & External Works", description: "Driveways, retaining walls, fencing" },
-];
 
 export function ConstructionScopeSelector({ selected, onChange }: ConstructionScopeSelectorProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -101,7 +84,7 @@ export function ConstructionScopeSelector({ selected, onChange }: ConstructionSc
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        {mainScopes.map((scope) => (
+        {MAIN_CONSTRUCTION_SCOPES.map((scope) => (
           <ScopeToggle key={scope.value} scope={scope} />
         ))}
       </div>
@@ -125,7 +108,7 @@ export function ConstructionScopeSelector({ selected, onChange }: ConstructionSc
 
       {showAdvanced && (
         <div className="grid gap-3 md:grid-cols-2">
-          {advancedScopes.map((scope) => (
+          {ADVANCED_CONSTRUCTION_SCOPES.map((scope) => (
             <ScopeToggle key={scope.value} scope={scope} />
           ))}
         </div>

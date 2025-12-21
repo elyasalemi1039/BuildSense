@@ -14,6 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { createProject } from "@/lib/actions/projects";
+import {
+  PROJECT_TYPES,
+  BUILDING_CLASSES,
+  NCC_CONTEXTS,
+  NCC_VERSIONS,
+} from "@/lib/constants/project-options";
 
 import { AddressAutocomplete } from "./_components/address-autocomplete";
 import { ConstructionScopeSelector } from "./_components/construction-scope-selector";
@@ -23,42 +29,6 @@ const steps = [
   { id: 1, name: "Project Details" },
   { id: 2, name: "Location" },
   { id: 3, name: "Scope" },
-];
-
-const projectTypes = [
-  { value: "new_build", label: "New Build" },
-  { value: "renovation", label: "Renovation/Alteration" },
-  { value: "extension", label: "Extension" },
-];
-
-const buildingClasses = [
-  { value: "class_1a", label: "Class 1a", description: "Single dwelling (detached house, townhouse)" },
-  { value: "class_1b", label: "Class 1b", description: "Boarding house, guest house, hostel (≤12 people)" },
-  { value: "class_2", label: "Class 2", description: "Apartment building (2+ sole-occupancy units)" },
-  { value: "class_3", label: "Class 3", description: "Residential building (hotel, motel, backpackers)" },
-  { value: "class_4", label: "Class 4", description: "Dwelling in a Class 5-9 building" },
-  { value: "class_5", label: "Class 5", description: "Office building" },
-  { value: "class_6", label: "Class 6", description: "Shop or retail premises" },
-  { value: "class_7a", label: "Class 7a", description: "Car park" },
-  { value: "class_7b", label: "Class 7b", description: "Warehouse or storage" },
-  { value: "class_8", label: "Class 8", description: "Laboratory, factory, or production facility" },
-  { value: "class_9a", label: "Class 9a", description: "Health care building (hospital, clinic)" },
-  { value: "class_9b", label: "Class 9b", description: "Assembly building (theatre, school, church)" },
-  { value: "class_9c", label: "Class 9c", description: "Aged care building" },
-  { value: "class_10a", label: "Class 10a", description: "Non-habitable (garage, carport, shed)" },
-  { value: "class_10b", label: "Class 10b", description: "Structure (fence, mast, retaining wall)" },
-  { value: "class_10c", label: "Class 10c", description: "Private bushfire shelter" },
-];
-
-const nccContexts = [
-  { value: "volume_one", label: "Volume One", description: "Class 2-9 buildings" },
-  { value: "volume_two", label: "Volume Two", description: "Class 1 & 10 buildings" },
-];
-
-const nccVersions = [
-  { value: "ncc_2025", label: "NCC 2025" },
-  { value: "ncc_2022", label: "NCC 2022" },
-  { value: "ncc_2019", label: "NCC 2019 (Amendment 1)" },
 ];
 
 interface FormData {
@@ -130,9 +100,17 @@ export default function NewProjectPage() {
     try {
       const result = await createProject({
         name: formData.name,
-        address: formData.address,
-        building_class: formData.building_class,
-        description: `${formData.project_type} - ${formData.ncc_context}`,
+        project_type: formData.project_type || undefined,
+        building_class: formData.building_class || undefined,
+        number_of_storeys: formData.number_of_storeys ? parseInt(formData.number_of_storeys, 10) : undefined,
+        construction_value: formData.construction_value ? parseInt(formData.construction_value, 10) : undefined,
+        ncc_context: formData.ncc_context || undefined,
+        ncc_version: formData.ncc_version || undefined,
+        address: formData.address || undefined,
+        state: formData.state || undefined,
+        latitude: formData.latitude ?? undefined,
+        longitude: formData.longitude ?? undefined,
+        construction_scopes: formData.construction_scopes.length > 0 ? formData.construction_scopes : undefined,
       });
 
       if (result?.error) {
@@ -239,7 +217,7 @@ export default function NewProjectPage() {
                     <SelectValue placeholder="Select project type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projectTypes.map((type) => (
+                    {PROJECT_TYPES.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
@@ -258,7 +236,7 @@ export default function NewProjectPage() {
                     <SelectValue placeholder="Select building class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {buildingClasses.map((cls) => (
+                    {BUILDING_CLASSES.map((cls) => (
                       <SelectItem key={cls.value} value={cls.value}>
                         <div className="flex flex-col">
                           <span className="font-medium">{cls.label}</span>
@@ -306,7 +284,7 @@ export default function NewProjectPage() {
                       <SelectValue placeholder="Select NCC context" />
                     </SelectTrigger>
                     <SelectContent>
-                      {nccContexts.map((ctx) => (
+                      {NCC_CONTEXTS.map((ctx) => (
                         <SelectItem key={ctx.value} value={ctx.value}>
                           <div className="flex flex-col">
                             <span>{ctx.label}</span>
@@ -328,7 +306,7 @@ export default function NewProjectPage() {
                       <SelectValue placeholder="Select NCC version" />
                     </SelectTrigger>
                     <SelectContent>
-                      {nccVersions.map((ver) => (
+                      {NCC_VERSIONS.map((ver) => (
                         <SelectItem key={ver.value} value={ver.value}>
                           {ver.label}
                         </SelectItem>
