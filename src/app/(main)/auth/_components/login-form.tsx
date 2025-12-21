@@ -22,6 +22,8 @@ const FormSchema = z.object({
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const redirectTo = searchParams?.get("redirectTo") || "/dashboard";
   const [isLoading, setIsLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -41,7 +43,7 @@ export function LoginForm() {
     const timeout = setTimeout(() => {
       console.error("Login timeout - forcing navigation");
       toast.success("Logging in...");
-      router.push("/dashboard");
+      router.push(redirectTo);
       router.refresh();
     }, 3000);
 
@@ -58,7 +60,7 @@ export function LoginForm() {
       } else if (result?.success) {
         toast.success("Welcome back!");
         startTransition(() => {
-          router.push("/dashboard");
+          router.push(redirectTo);
           router.refresh();
         });
       }

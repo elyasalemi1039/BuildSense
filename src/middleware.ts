@@ -15,21 +15,17 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtectedRoute) {
-    // Check if user has a valid session
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Check if user has a valid session by looking for any Supabase auth cookies
+    const cookies = request.cookies.getAll();
+    const hasAuthCookie = cookies.some((cookie) => 
+      cookie.name.startsWith("sb-") && cookie.name.includes("auth-token")
+    );
 
-    if (supabaseUrl && supabaseAnonKey) {
-      // Get the auth token from cookies
-      const authToken = request.cookies.get("sb-access-token")?.value;
-      const refreshToken = request.cookies.get("sb-refresh-token")?.value;
-
-      // If no auth tokens, redirect to login
-      if (!authToken && !refreshToken) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("redirectTo", pathname);
-        return NextResponse.redirect(loginUrl);
-      }
+    // If no auth cookies, redirect to login
+    if (!hasAuthCookie) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirectTo", pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
@@ -38,9 +34,16 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   if (isAuthRoute) {
-    const authToken = request.cookies.get("sb-access-token")?.value;
-    if (authToken) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+    const cookies = request.cookies.getAll();
+    const hasAuthCookie = cookies.some((cookie) => 
+      cookie.name.startsWith("sb-") && cookie.name.includes("auth-token")
+    );
+    
+    if (hasAuthCookie) {
+      // Check if there's a redirectTo parameter
+      const redirectTo = request.nextUrl.searchParams.get("redirectTo");
+      const destination = redirectTo || "/dashboard";
+      return NextResponse.redirect(new URL(destination, request.url));
     }
   }
 
