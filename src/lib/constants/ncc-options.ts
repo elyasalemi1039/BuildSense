@@ -8,9 +8,37 @@
 export const EDITION_KINDS = ["BASE", "OVERLAY"] as const;
 export type EditionKind = (typeof EDITION_KINDS)[number];
 
-// Edition statuses
-export const EDITION_STATUSES = ["draft", "parsed", "indexed", "published", "archived"] as const;
+// Edition statuses (ingestion pipeline)
+export const EDITION_STATUSES = ["draft", "uploaded", "parsing", "parsed", "indexing", "indexed", "published", "archived"] as const;
 export type EditionStatus = (typeof EDITION_STATUSES)[number];
+
+// Legal statuses
+export const LEGAL_STATUSES = ["draft", "adopted", "superseded", "withdrawn"] as const;
+export type LegalStatus = (typeof LEGAL_STATUSES)[number];
+
+// XML Schema Compatibility
+export const SCHEMA_COMPATIBILITIES = ["fully_compatible", "partially_compatible", "breaking_changes"] as const;
+export type SchemaCompatibility = (typeof SCHEMA_COMPATIBILITIES)[number];
+
+// NCC Volumes
+export const NCC_VOLUMES = [
+  { value: "volume_one", label: "Volume One", description: "Class 2-9 buildings" },
+  { value: "volume_two", label: "Volume Two", description: "Class 1 and 10 buildings" },
+  { value: "volume_three", label: "Volume Three", description: "Plumbing and Drainage" },
+  { value: "housing_provisions", label: "Housing Provisions", description: "Combined Class 1 and 10" },
+] as const;
+export const NCC_VOLUME_VALUES = NCC_VOLUMES.map((v) => v.value);
+export type NCCVolume = (typeof NCC_VOLUME_VALUES)[number];
+
+// High liability areas for legal flags
+export const HIGH_LIABILITY_AREAS = [
+  { value: "fire_safety", label: "Fire Safety" },
+  { value: "structural", label: "Structural" },
+  { value: "waterproofing", label: "Waterproofing" },
+  { value: "accessibility", label: "Accessibility" },
+  { value: "energy_efficiency", label: "Energy Efficiency" },
+  { value: "plumbing", label: "Plumbing & Drainage" },
+] as const;
 
 // Node types
 export const NODE_TYPES = [

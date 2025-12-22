@@ -13,6 +13,15 @@ import type {
   Jurisdiction,
 } from "@/lib/constants/ncc-options";
 
+// Legal status of an NCC edition
+export type LegalStatus = "draft" | "adopted" | "superseded" | "withdrawn";
+
+// XML schema compatibility
+export type SchemaCompatibility = "fully_compatible" | "partially_compatible" | "breaking_changes";
+
+// NCC Volumes
+export type NCCVolume = "volume_one" | "volume_two" | "volume_three" | "housing_provisions";
+
 // NCC Edition
 export interface NCCEdition {
   id: string;
@@ -29,6 +38,80 @@ export interface NCCEdition {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  
+  // Edition Identity & Authority
+  legal_status: LegalStatus;
+  authority: string;
+  replaces_edition_id: string | null;
+  transition_end_date: string | null;
+  
+  // Structural Scope
+  volumes_included: NCCVolume[];
+  has_structural_changes: boolean;
+  structural_change_notes: string | null;
+  building_class_changes: string | null;
+  performance_requirements_changed: boolean;
+  
+  // Machine-Readable Data & Ingestion
+  has_xml_data: boolean;
+  xml_schema_compatibility: SchemaCompatibility;
+  new_data_fields: string[] | null;
+  deprecated_fields: string[] | null;
+  license: string;
+  
+  // Regulatory Logic Changes
+  dts_threshold_changes: string | null;
+  new_dts_pathways: string[] | null;
+  removed_dts_provisions: string[] | null;
+  mandatory_verification_changes: string | null;
+  new_evidence_types: string[] | null;
+  
+  // Referenced Standards
+  updated_standards: string[] | null;
+  new_standards: string[] | null;
+  removed_standards: string[] | null;
+  standards_notes: string | null;
+  
+  // State & Territory Variations
+  has_state_variations: boolean;
+  state_variations_machine_readable: boolean;
+  variation_overrides_dts: boolean;
+  variation_adds_requirements: boolean;
+  state_transition_differences: string | null;
+  
+  // Transition & Project Compatibility
+  allows_project_lock: boolean;
+  allows_auto_migration: boolean;
+  requires_reassessment: boolean;
+  validity_cutoff_date: string | null;
+  mixing_editions_warning: boolean;
+  
+  // App Behaviour & UX Controls
+  is_default_for_new_projects: boolean;
+  hide_older_editions: boolean;
+  ai_enabled: boolean;
+  ai_validation_required: boolean;
+  requires_new_calculators: boolean;
+  requires_reindexing: boolean;
+  new_features_required: string[] | null;
+  
+  // Legal & Risk Flags
+  high_liability_areas: string[] | null;
+  updated_disclaimers: boolean;
+  guidance_only: boolean;
+  internal_signoff: boolean;
+  signoff_by: string | null;
+  signoff_at: string | null;
+  
+  // Internal Version Control
+  internal_version_id: string | null;
+  allows_hotfixes: boolean;
+  amendments_as_patches: boolean;
+  audit_edition_queries: boolean;
+  
+  // Admin Notes
+  admin_notes: string | null;
+  change_summary: string | null;
 }
 
 export interface NCCEditionInsert {

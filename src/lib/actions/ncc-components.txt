@@ -1,0 +1,156 @@
+When an admin creates a new NCC edition in your app (e.g. NCC 2025, NCC 2028), the questions should not be generic metadata. They should exist to answer one core system problem:
+
+“How does this NCC edition differ from previous ones in a way that affects compliance logic, data ingestion, and existing projects?”
+
+Below is a clean, future-proof question set, grouped by purpose. This is written so you can directly convert it into an admin UI wizard and backend schema.
+
+⸻
+
+1. Edition Identity & Authority (non-negotiable)
+
+These define what the edition is and who governs it.
+	1.	What is the official NCC edition name?
+(e.g. NCC 2025, NCC 2028)
+	2.	What is the legal commencement date?
+(Important for transitional rules)
+	3.	What is the edition status?
+	•	Draft
+	•	Adopted
+	•	Superseded
+	•	Withdrawn
+	4.	Which authority published this edition?
+(Usually Australian Building Codes Board)
+	5.	Does this edition replace a previous edition or coexist during a transition period?
+
+⸻
+
+2. Structural Scope (drives data loading & routing)
+
+These questions control which rulesets get loaded and where they apply.
+	6.	Which NCC volumes are included in this edition?
+	•	Volume One
+	•	Volume Two
+	•	Volume Three
+	•	Housing Provisions
+	7.	Have any volumes been structurally reorganised?
+(Clause renumbering, merged sections, split parts)
+	8.	Are any building classes newly introduced, removed, or redefined?
+	9.	Are Performance Requirements restructured or reworded in this edition?
+(Yes → impacts Rules-as-Code mapping)
+
+⸻
+
+3. Machine-Readable Data & Ingestion (critical for automation)
+
+These questions decide whether your app can automate or must fallback to manual logic.
+	10.	Is official XML data available for this NCC edition?
+	11.	Is the XML schema backward-compatible with the previous edition?
+
+	•	Fully compatible
+	•	Partially compatible
+	•	Breaking changes
+
+	12.	Does this edition introduce new data fields or metadata tags?
+(e.g. new attributes for climate zones, materials, fire ratings)
+	13.	Does this edition deprecate or remove existing XML nodes?
+	14.	Is the XML released under the same licence (CC BY 4.0)?
+(If not → legal flag)
+
+⸻
+
+4. Regulatory Logic Changes (Rules-as-Code impact)
+
+These questions determine what breaks, what must be re-validated, and what can be reused.
+	15.	Which DTS provisions have changed thresholds or numeric limits?
+(e.g. glazing values, FRLs, stair dimensions)
+	16.	Are there entirely new DTS pathways introduced?
+	17.	Have any DTS provisions been removed or invalidated?
+	18.	Do any Performance Requirements now require mandatory verification methods?
+	19.	Does this edition introduce new mandatory documentation or evidence types?
+
+⸻
+
+5. Referenced Standards Impact (copyright-safe handling)
+
+These questions prevent you from accidentally breaking copyright law.
+	20.	Have any referenced Australian Standards been added, removed, or updated?
+	21.	Are updated standards mandatory or optional during transition?
+	22.	Do any referenced standards now replace prescriptive NCC text?
+	23.	Does this edition increase reliance on external standards for compliance decisions?
+
+(This informs whether you show “reference only” links vs calculators)
+
+⸻
+
+6. State & Territory Variations (jurisdiction engine)
+
+These questions drive your variation override system.
+	24.	Which States/Territories have variations in this edition?
+	25.	Are variations published as machine-readable datasets?
+	26.	Do any variations override national DTS provisions?
+	27.	Do any variations introduce stricter or additional requirements?
+	28.	Are transitional rules different per state?
+
+⸻
+
+7. Transition & Project Compatibility (protects existing users)
+
+These are essential to avoid breaking active projects.
+	29.	Can existing projects remain locked to earlier NCC editions?
+	30.	Is automatic migration allowed or forbidden for this edition?
+	31.	Does this edition require re-assessment of in-progress approvals?
+	32.	Is there a cutoff date after which older editions are invalid?
+	33.	Should users be warned when mixing editions across projects?
+
+⸻
+
+8. App Behaviour & UX Controls (what users actually feel)
+
+These questions define how the app behaves once the edition is live.
+	34.	Should this edition be selectable by default for new projects?
+	35.	Should older editions be hidden, archived, or still selectable?
+	36.	Should the AI assistant be allowed to answer questions using this edition immediately, or only after validation?
+	37.	Does this edition require new calculators, checklists, or workflows?
+	38.	Should this edition trigger system-wide reindexing (search, AI, rules engine)?
+
+⸻
+
+9. Legal & Risk Flags (silent but critical)
+
+These protect you as the platform owner.
+	39.	Does this edition introduce higher liability risk areas?
+(Fire safety, waterproofing, structural changes)
+	40.	Does this edition require updated disclaimers or legal text in the app?
+	41.	Is this edition marked as “guidance only” during early adoption?
+	42.	Has this edition been reviewed and signed off internally before activation?
+
+⸻
+
+10. Internal Version Control (admin-only, future proofing)
+
+These make your system scale beyond NCC.
+	43.	What internal version ID should this edition use?
+(e.g. ncc_2025_v1)
+	44.	Is this edition allowed to receive hotfixes or amendments?
+	45.	Should amendments be treated as patches or new editions?
+	46.	Should audit logs track which edition answered each user query?
+
+⸻
+
+🔑 The Golden Rule (important)
+
+Users should never “create” an NCC edition.
+Admins do.
+Users only select an edition.
+
+Your admin flow is not a form — it’s a controlled release pipeline.
+
+⸻
+
+If you want, next I can:
+	•	Turn this into a single admin wizard flow
+	•	Design the Supabase schema for NCC editions
+	•	Write a Cursor-ready spec explaining how the backend should treat editions
+	•	Or define what must be hard-blocked vs soft-warned when editions change
+
+Just tell me which one you want next.

@@ -49,7 +49,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       </header>
 
       {/* Admin Content */}
-      <main className="container py-6">
+      <main className="container py-6 px-6 md:px-8 lg:px-12">
         {children}
       </main>
     </div>

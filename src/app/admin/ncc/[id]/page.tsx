@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -15,7 +15,8 @@ import {
   XCircle, 
   Clock,
   Loader2,
-  Trash2
+  Trash2,
+  FileArchive
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,6 +65,8 @@ export default function EditionDetailPage() {
   const [jobs, setJobs] = useState<NCCIngestionJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async () => {
     const [editionResult, jobsResult] = await Promise.all([
@@ -90,6 +93,79 @@ export default function EditionDetailPage() {
     }, 3000);
     return () => clearInterval(interval);
   }, [loadData, jobs]);
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith(".zip")) {
+      toast.error("Invalid file type", { description: "Please upload a ZIP file" });
+      return;
+    }
+
+    // Validate file size (max 500MB)
+    if (file.size > 500 * 1024 * 1024) {
+      toast.error("File too large", { description: "Maximum file size is 500MB" });
+      return;
+    }
+
+    setActionLoading("upload");
+    setUploadProgress(0);
+
+    try {
+      // Step 1: Get presigned URL
+      toast.info("Getting upload URL...");
+      const urlResponse = await fetch(`/api/admin/ncc/${editionId}/upload-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          fileName: file.name,
+          contentType: "application/zip",
+          fileSize: file.size
+        }),
+      });
+      
+      const urlResult = await urlResponse.json();
+      if (urlResult.error) {
+        throw new Error(urlResult.error);
+      }
+
+      // Step 2: Upload to R2 using presigned URL
+      toast.info("Uploading to storage...");
+      const uploadResponse = await fetch(urlResult.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": "application/zip",
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload file to storage");
+      }
+
+      setUploadProgress(100);
+      toast.success("Upload complete!", {
+        description: `${file.name} uploaded successfully. You can now parse the XML files.`,
+      });
+
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      loadData();
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Upload failed", { 
+        description: error instanceof Error ? error.message : "Unknown error" 
+      });
+    } finally {
+      setActionLoading(null);
+      setUploadProgress(0);
+    }
+  };
 
   const handleParse = async () => {
     setActionLoading("parse");
@@ -206,10 +282,12 @@ export default function EditionDetailPage() {
   }
 
   const latestParseJob = jobs.find((j) => j.job_type === "PARSE");
-  const canParse = edition.status === "draft" || latestParseJob?.status === "partial";
+  const canUpload = edition.status === "draft" || edition.status === "uploaded";
+  const canParse = edition.status === "uploaded" || edition.status === "draft" || latestParseJob?.status === "partial";
   const canIndex = edition.status === "parsed";
   const canPublish = edition.status === "indexed" || edition.status === "parsed";
   const canDelete = edition.status !== "published";
+  const hasUploadedFile = !!edition.source_r2_key;
 
   return (
     <div className="space-y-6">
@@ -306,11 +384,33 @@ export default function EditionDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
-            {/* Upload - Disabled for now, using sample data */}
-            <Button variant="outline" disabled>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload ZIP
-              <span className="ml-2 text-xs">(Coming soon)</span>
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleUpload}
+              accept=".zip"
+              className="hidden"
+            />
+
+            {/* Upload */}
+            <Button 
+              variant={hasUploadedFile ? "outline" : "default"}
+              disabled={!canUpload || actionLoading === "upload"}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {actionLoading === "upload" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : hasUploadedFile ? (
+                <FileArchive className="mr-2 h-4 w-4" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              {actionLoading === "upload" 
+                ? `Uploading... ${uploadProgress}%` 
+                : hasUploadedFile 
+                  ? "Replace ZIP" 
+                  : "Upload ZIP"}
             </Button>
 
             {/* Parse */}
@@ -354,6 +454,15 @@ export default function EditionDetailPage() {
               Publish
             </Button>
           </div>
+
+          {/* Uploaded file info */}
+          {hasUploadedFile && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <FileArchive className="h-4 w-4" />
+              <span>File uploaded: {edition.source_r2_key?.split("/").pop()}</span>
+              <Badge variant="outline" className="text-xs">Ready to parse</Badge>
+            </div>
+          )}
 
           {/* Progress for partial parse */}
           {latestParseJob?.status === "partial" && (
