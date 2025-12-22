@@ -129,14 +129,14 @@ export default function NewEditionPage() {
             <div className="space-y-2">
               <Label htmlFor="jurisdiction">Jurisdiction (Optional)</Label>
               <Select
-                value={formData.jurisdiction}
-                onValueChange={(value) => setFormData({ ...formData, jurisdiction: value })}
+                value={formData.jurisdiction || "NATIONAL"}
+                onValueChange={(value) => setFormData({ ...formData, jurisdiction: value === "NATIONAL" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select jurisdiction (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">National (All jurisdictions)</SelectItem>
+                  <SelectItem value="NATIONAL">National (All jurisdictions)</SelectItem>
                   {JURISDICTIONS.map((j) => (
                     <SelectItem key={j.value} value={j.value}>
                       {j.label} ({j.value})
