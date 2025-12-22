@@ -62,3 +62,4 @@ ALTER TABLE projects ADD CONSTRAINT check_construction_scopes
 CREATE INDEX IF NOT EXISTS idx_projects_project_type ON projects(project_type);
 CREATE INDEX IF NOT EXISTS idx_projects_ncc_context ON projects(ncc_context);
 
+

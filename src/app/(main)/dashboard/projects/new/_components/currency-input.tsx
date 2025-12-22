@@ -40,3 +40,4 @@ export function CurrencyInput({ value, onChange }: CurrencyInputProps) {
   );
 }
 
+

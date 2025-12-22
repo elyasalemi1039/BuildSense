@@ -130,3 +130,4 @@ npx supabase db reset
 - Arrays are used for storing multiple URLs (photos, documents)
 - JSONB is used for flexible data (geo_location)
 
+

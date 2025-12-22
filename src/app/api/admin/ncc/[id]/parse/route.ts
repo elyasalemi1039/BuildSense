@@ -17,6 +17,13 @@ interface NCCJob {
   progress: number;
 }
 
+// File progress type
+interface FileProgress {
+  id: string;
+  file_path: string;
+  file_status: string;
+}
+
 // Maximum files to process per invocation (to stay within Vercel timeout)
 const FILES_PER_CHUNK = 5;
 // Maximum time to run before returning (in ms) - leave buffer for response
@@ -128,13 +135,13 @@ export async function POST(
     }
 
     // Get pending files
-    const { data: pendingFiles } = await supabase
+    const { data: pendingFiles } = await (supabase as AnySupabase)
       .from("ncc_parse_progress")
       .select("*")
       .eq("job_id", job.id)
       .eq("file_status", "pending")
       .order("created_at", { ascending: true })
-      .limit(FILES_PER_CHUNK);
+      .limit(FILES_PER_CHUNK) as { data: FileProgress[] | null };
 
     if (!pendingFiles || pendingFiles.length === 0) {
       // All files processed - finalize
