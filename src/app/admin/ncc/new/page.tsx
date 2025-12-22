@@ -1,23 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import { toast } from "sonner";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createEdition } from "@/lib/actions/ncc";
+import { createEdition, getEditions } from "@/lib/actions/ncc";
 import { EDITION_KINDS, JURISDICTIONS } from "@/lib/constants/ncc-options";
+
+interface BaseEdition {
+  id: string;
+  name: string;
+  effective_date: string;
+}
 
 export default function NewEditionPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [baseEditions, setBaseEditions] = useState<BaseEdition[]>([]);
+  const [loadingEditions, setLoadingEditions] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     kind: "BASE",
@@ -26,8 +35,40 @@ export default function NewEditionPage() {
     applies_to_base_edition_id: "",
   });
 
+  // Fetch base editions for overlay selection
+  useEffect(() => {
+    async function fetchBaseEditions() {
+      try {
+        const result = await getEditions();
+        if (result.editions) {
+          // Filter to only BASE editions
+          const bases = result.editions
+            .filter((e: any) => e.kind === "BASE")
+            .map((e: any) => ({
+              id: e.id,
+              name: e.name,
+              effective_date: e.effective_date,
+            }));
+          setBaseEditions(bases);
+        }
+      } catch (error) {
+        console.error("Failed to fetch editions:", error);
+      } finally {
+        setLoadingEditions(false);
+      }
+    }
+    fetchBaseEditions();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation for OVERLAY
+    if (formData.kind === "OVERLAY" && !formData.applies_to_base_edition_id) {
+      toast.error("Please select a base edition for this overlay");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -71,6 +112,27 @@ export default function NewEditionPage() {
         </p>
       </div>
 
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>About NCC Editions</AlertTitle>
+        <AlertDescription className="mt-2 space-y-2">
+          <p>
+            <strong>BASE editions</strong> contain the full NCC for a year (e.g., NCC 2022, NCC 2025).
+            Upload a single ZIP containing all volumes:
+          </p>
+          <ul className="list-disc list-inside ml-2 text-sm">
+            <li>Volume One (Class 2-9 buildings)</li>
+            <li>Volume Two (Class 1 and 10 buildings)</li>
+            <li>Volume Three (Plumbing and Drainage)</li>
+            <li>Housing Provisions</li>
+          </ul>
+          <p className="mt-2">
+            <strong>OVERLAY editions</strong> are amendments or state-specific variations 
+            that modify a base edition (e.g., &quot;NCC 2025 Amendment 1&quot; or &quot;VIC Variations 2025&quot;).
+          </p>
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
           <CardTitle>Edition Details</CardTitle>
@@ -84,7 +146,7 @@ export default function NewEditionPage() {
               <Label htmlFor="name">Edition Name *</Label>
               <Input
                 id="name"
-                placeholder="e.g., NCC 2022, NCC 2022 Amendment 1"
+                placeholder={formData.kind === "BASE" ? "e.g., NCC 2025" : "e.g., NCC 2025 Amendment 1, VIC Variations 2025"}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
@@ -96,7 +158,12 @@ export default function NewEditionPage() {
                 <Label htmlFor="kind">Edition Type *</Label>
                 <Select
                   value={formData.kind}
-                  onValueChange={(value) => setFormData({ ...formData, kind: value })}
+                  onValueChange={(value) => setFormData({ 
+                    ...formData, 
+                    kind: value,
+                    // Clear base edition if switching to BASE
+                    applies_to_base_edition_id: value === "BASE" ? "" : formData.applies_to_base_edition_id 
+                  })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
@@ -110,7 +177,9 @@ export default function NewEditionPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  BASE = main NCC edition, OVERLAY = amendment or state variation
+                  {formData.kind === "BASE" 
+                    ? "Full NCC edition with all volumes" 
+                    : "Amendment or state variation that modifies a base edition"}
                 </p>
               </div>
 
@@ -125,6 +194,41 @@ export default function NewEditionPage() {
                 />
               </div>
             </div>
+
+            {/* Show base edition selector only for OVERLAY */}
+            {formData.kind === "OVERLAY" && (
+              <div className="space-y-2">
+                <Label htmlFor="base_edition">Applies to Base Edition *</Label>
+                <Select
+                  value={formData.applies_to_base_edition_id || "NONE"}
+                  onValueChange={(value) => setFormData({ 
+                    ...formData, 
+                    applies_to_base_edition_id: value === "NONE" ? "" : value 
+                  })}
+                  disabled={loadingEditions}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingEditions ? "Loading..." : "Select base edition"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE" disabled>Select a base edition...</SelectItem>
+                    {baseEditions.map((edition) => (
+                      <SelectItem key={edition.id} value={edition.id}>
+                        {edition.name} ({new Date(edition.effective_date).getFullYear()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {baseEditions.length === 0 && !loadingEditions && (
+                  <p className="text-xs text-destructive">
+                    No base editions found. Create a BASE edition first before creating overlays.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This overlay will modify or extend the selected base edition
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="jurisdiction">Jurisdiction (Optional)</Label>
@@ -145,12 +249,17 @@ export default function NewEditionPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Leave empty for national editions, select for state-specific variations
+                {formData.kind === "BASE" 
+                  ? "Base editions are typically National"
+                  : "Select a state for state-specific variations (e.g., VIC, NSW)"}
               </p>
             </div>
 
             <div className="flex gap-4">
-              <Button type="submit" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                disabled={isLoading || (formData.kind === "OVERLAY" && baseEditions.length === 0)}
+              >
                 {isLoading ? "Creating..." : "Create Edition"}
               </Button>
               <Link href="/admin/ncc">
