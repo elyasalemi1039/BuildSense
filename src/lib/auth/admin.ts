@@ -1,5 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = any;
+
+interface ProfileWithAdmin {
+  is_admin: boolean | null;
+}
+
 /**
  * Check if the current user is an admin
  */
@@ -10,11 +17,11 @@ export async function isAdmin(): Promise<boolean> {
     
     if (!user) return false;
 
-    const { data: profile } = await supabase
+    const { data: profile } = await (supabase as AnySupabase)
       .from("profiles")
       .select("is_admin")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileWithAdmin | null };
 
     return profile?.is_admin === true;
   } catch {
@@ -33,11 +40,11 @@ export async function requireAdmin(): Promise<{ userId: string }> {
     throw new Error("Not authenticated");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await (supabase as AnySupabase)
     .from("profiles")
     .select("is_admin")
     .eq("id", user.id)
-    .single();
+    .single() as { data: ProfileWithAdmin | null };
 
   if (!profile?.is_admin) {
     throw new Error("Admin access required");
