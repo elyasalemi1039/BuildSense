@@ -131,6 +131,22 @@ export default function EditionDetailPage() {
         throw new Error(urlResult.error);
       }
 
+      // Check if R2 is configured (dev mode will have null uploadUrl)
+      if (urlResult.devMode || !urlResult.uploadUrl) {
+        setUploadProgress(100);
+        toast.warning("R2 Storage not configured", {
+          description: "File upload skipped in development mode. Configure R2 environment variables to enable uploads.",
+        });
+        
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        
+        loadData();
+        return;
+      }
+
       // Step 2: Upload to R2 using presigned URL
       toast.info("Uploading to storage...");
       const uploadResponse = await fetch(urlResult.uploadUrl, {

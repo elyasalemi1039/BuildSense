@@ -115,9 +115,28 @@ General inspection records:
 Make sure these are set in Vercel:
 
 ```env
+# Supabase (Required)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Cloudflare R2 Storage (Required for NCC file uploads)
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key-id
+R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+R2_BUCKET_NAME=buildsense-files
 ```
+
+### Setting up Cloudflare R2
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. Select your account → **R2 Object Storage**
+3. Click **Create Bucket** and name it `buildsense-files`
+4. Go to **Manage R2 API Tokens** → **Create API Token**
+5. Select permissions: **Object Read & Write**
+6. Copy the Access Key ID and Secret Access Key
+7. Your Account ID is in the URL: `dash.cloudflare.com/[ACCOUNT_ID]/r2`
+
+**Note:** R2 is optional for local development. The app will skip file uploads when R2 is not configured.
 
 Already added? ✅ Good to go!
 
