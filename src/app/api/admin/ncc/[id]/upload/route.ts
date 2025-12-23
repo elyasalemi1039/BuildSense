@@ -36,7 +36,7 @@ export async function POST(
     // Check if R2 is configured
     if (!r2Client) {
       // Update edition to mark as "uploaded" even in dev mode
-      await supabase
+      await (supabase as any)
         .from("ncc_editions")
         .update({ 
           status: "uploaded",
@@ -88,7 +88,7 @@ export async function POST(
     await r2Client.send(command);
 
     // Update edition with the R2 key and status
-    await supabase
+    await (supabase as any)
       .from("ncc_editions")
       .update({ 
         source_r2_key: objectKey,
