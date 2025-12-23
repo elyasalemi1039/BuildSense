@@ -104,9 +104,9 @@ export default function EditionDetailPage() {
       return;
     }
 
-    // Validate file size (max 100MB for server upload)
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error("File too large", { description: "Maximum file size is 100MB" });
+    // Validate file size (max 500MB)
+    if (file.size > 500 * 1024 * 1024) {
+      toast.error("File too large", { description: "Maximum file size is 500MB" });
       return;
     }
 
@@ -114,35 +114,75 @@ export default function EditionDetailPage() {
     setUploadProgress(0);
 
     try {
-      toast.info("Uploading file...");
-      
-      // Create FormData and upload directly to our API
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch(`/api/admin/ncc/${editionId}/upload`, {
+      // Step 1: Get presigned URL from our API
+      toast.info("Preparing upload...");
+      const urlResponse = await fetch(`/api/admin/ncc/${editionId}/upload-url`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          fileName: file.name,
+          contentType: "application/zip",
+          fileSize: file.size
+        }),
       });
-
-      const result = await response.json();
       
-      if (result.error) {
-        throw new Error(result.error);
+      const urlResult = await urlResponse.json();
+      if (urlResult.error) {
+        throw new Error(urlResult.error);
       }
 
-      // Check if dev mode (R2 not configured)
-      if (result.devMode) {
+      // Check if R2 is configured (dev mode will have null uploadUrl)
+      if (urlResult.devMode || !urlResult.uploadUrl) {
         setUploadProgress(100);
         toast.warning("R2 Storage not configured", {
           description: "File upload skipped in development mode. Configure R2 environment variables to enable uploads.",
         });
-      } else {
-        setUploadProgress(100);
-        toast.success("Upload complete!", {
-          description: `${file.name} uploaded successfully. You can now parse the XML files.`,
-        });
+        
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        
+        loadData();
+        return;
       }
+
+      // Step 2: Upload directly to R2 using presigned URL
+      toast.info("Uploading to storage...");
+      setUploadProgress(10);
+      
+      const uploadResponse = await fetch(urlResult.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": "application/zip",
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text().catch(() => "Unknown error");
+        throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+      }
+
+      // Step 3: Confirm upload to our API
+      setUploadProgress(90);
+      const confirmResponse = await fetch(`/api/admin/ncc/${editionId}/upload-confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          objectKey: urlResult.objectKey,
+          fileSize: file.size
+        }),
+      });
+      
+      const confirmResult = await confirmResponse.json();
+      if (confirmResult.error) {
+        console.warn("Upload confirmation warning:", confirmResult.error);
+      }
+
+      setUploadProgress(100);
+      toast.success("Upload complete!", {
+        description: `${file.name} uploaded successfully. You can now parse the XML files.`,
+      });
 
       // Clear the file input
       if (fileInputRef.current) {
