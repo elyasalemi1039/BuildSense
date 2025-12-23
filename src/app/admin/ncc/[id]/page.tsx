@@ -104,9 +104,9 @@ export default function EditionDetailPage() {
       return;
     }
 
-    // Validate file size (max 500MB)
-    if (file.size > 500 * 1024 * 1024) {
-      toast.error("File too large", { description: "Maximum file size is 500MB" });
+    // Validate file size (max 100MB for server upload)
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error("File too large", { description: "Maximum file size is 100MB" });
       return;
     }
 
@@ -114,57 +114,35 @@ export default function EditionDetailPage() {
     setUploadProgress(0);
 
     try {
-      // Step 1: Get presigned URL
-      toast.info("Getting upload URL...");
-      const urlResponse = await fetch(`/api/admin/ncc/${editionId}/upload-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          fileName: file.name,
-          contentType: "application/zip",
-          fileSize: file.size
-        }),
-      });
+      toast.info("Uploading file...");
       
-      const urlResult = await urlResponse.json();
-      if (urlResult.error) {
-        throw new Error(urlResult.error);
+      // Create FormData and upload directly to our API
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`/api/admin/ncc/${editionId}/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
       }
 
-      // Check if R2 is configured (dev mode will have null uploadUrl)
-      if (urlResult.devMode || !urlResult.uploadUrl) {
+      // Check if dev mode (R2 not configured)
+      if (result.devMode) {
         setUploadProgress(100);
         toast.warning("R2 Storage not configured", {
           description: "File upload skipped in development mode. Configure R2 environment variables to enable uploads.",
         });
-        
-        // Clear the file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-        
-        loadData();
-        return;
+      } else {
+        setUploadProgress(100);
+        toast.success("Upload complete!", {
+          description: `${file.name} uploaded successfully. You can now parse the XML files.`,
+        });
       }
-
-      // Step 2: Upload to R2 using presigned URL
-      toast.info("Uploading to storage...");
-      const uploadResponse = await fetch(urlResult.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": "application/zip",
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload file to storage");
-      }
-
-      setUploadProgress(100);
-      toast.success("Upload complete!", {
-        description: `${file.name} uploaded successfully. You can now parse the XML files.`,
-      });
 
       // Clear the file input
       if (fileInputRef.current) {
