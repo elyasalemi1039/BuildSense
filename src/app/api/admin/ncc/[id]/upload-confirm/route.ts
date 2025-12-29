@@ -11,24 +11,46 @@ export async function POST(
     const { id: editionId } = await params;
     const supabase = await createClient();
     const body = await request.json();
-    const { objectKey, fileSize } = body;
+    const { objectKey, fileSize, volume } = body;
 
     // Verify edition exists
     const { data: edition, error: getError } = await supabase
       .from("ncc_editions")
-      .select("id, status")
+      .select("id, status, source_r2_key")
       .eq("id", editionId)
-      .single() as { data: { id: string; status: string } | null; error: any };
+      .single() as { data: { id: string; status: string; source_r2_key: string | null } | null; error: any };
 
     if (getError || !edition) {
       return errorResponse("Edition not found", 404);
     }
 
-    // Update edition with the R2 key and status
+    // For multi-file uploads, append to existing keys or create new
+    // Store as JSON array of upload info
+    let uploadedFiles: Array<{ key: string; volume: string; size: number; uploadedAt: string }> = [];
+    
+    // Try to parse existing source_r2_key as JSON array, fallback to single key
+    if (edition.source_r2_key) {
+      try {
+        uploadedFiles = JSON.parse(edition.source_r2_key);
+      } catch {
+        // Legacy single file - convert to array
+        uploadedFiles = [{ key: edition.source_r2_key, volume: "unknown", size: 0, uploadedAt: new Date().toISOString() }];
+      }
+    }
+
+    // Add new file
+    uploadedFiles.push({
+      key: objectKey,
+      volume: volume || "unknown",
+      size: fileSize,
+      uploadedAt: new Date().toISOString(),
+    });
+
+    // Update edition with the R2 keys and status
     await (supabase as any)
       .from("ncc_editions")
       .update({ 
-        source_r2_key: objectKey,
+        source_r2_key: JSON.stringify(uploadedFiles),
         status: "uploaded",
         updated_at: new Date().toISOString() 
       })
@@ -40,7 +62,7 @@ export async function POST(
       .update({
         status: "success",
         finished_at: new Date().toISOString(),
-        logs: `File uploaded successfully at ${new Date().toISOString()}\nObject key: ${objectKey}\nFile size: ${fileSize} bytes`,
+        logs: `File uploaded successfully at ${new Date().toISOString()}\nVolume: ${volume || "unknown"}\nObject key: ${objectKey}\nFile size: ${fileSize} bytes\nTotal files: ${uploadedFiles.length}`,
       })
       .eq("edition_id", editionId)
       .eq("job_type", "UPLOAD")
@@ -60,4 +82,6 @@ export async function POST(
     );
   }
 }
+
+
 

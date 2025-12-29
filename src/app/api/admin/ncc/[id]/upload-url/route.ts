@@ -25,13 +25,17 @@ export async function POST(
       return errorResponse("Edition not found", 404);
     }
 
-    if (edition.status !== "draft") {
-      return errorResponse("Can only upload to draft editions", 400);
+    if (edition.status !== "draft" && edition.status !== "uploaded") {
+      return errorResponse("Can only upload to draft or uploaded editions", 400);
     }
 
-    // Generate unique object key
+    // Get volume from request body
+    const body = await request.json().catch(() => ({}));
+    const volume = body.volume || "unknown";
+
+    // Generate unique object key with volume prefix
     const uploadId = crypto.randomUUID();
-    const objectKey = `ncc/raw/${editionId}/${uploadId}.zip`;
+    const objectKey = `ncc/raw/${editionId}/${volume}/${uploadId}.zip`;
 
     // Check if R2 is configured
     if (!r2Client) {
@@ -62,7 +66,7 @@ export async function POST(
         edition_id: editionId,
         job_type: "UPLOAD",
         status: "queued",
-        logs: `Upload URL generated at ${new Date().toISOString()}\nObject key: ${objectKey}`,
+        logs: `Upload URL generated at ${new Date().toISOString()}\nVolume: ${volume}\nObject key: ${objectKey}`,
         created_by: userId,
       } as any);
 

@@ -307,3 +307,5 @@ COMMENT ON TABLE ncc_ingestion_jobs IS 'Track NCC ingestion job progress';
 COMMENT ON TABLE ncc_parse_progress IS 'Track file-by-file parsing for chunked processing';
 
 
+
+

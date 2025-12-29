@@ -131,3 +131,5 @@ npx supabase db reset
 - JSONB is used for flexible data (geo_location)
 
 
+
+
