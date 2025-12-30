@@ -15,14 +15,14 @@ export async function GET(
     const supabase = await createClient();
 
     // Get edition
-    const { data: edition, error: editionError } = await supabase
+    const { data: edition, error: editionError } = await (supabase as any)
       .from("ncc_editions")
       .select("*")
       .eq("id", editionId)
       .single();
 
     // Get upload jobs
-    const { data: uploadJobs } = await supabase
+    const { data: uploadJobs } = await (supabase as any)
       .from("ncc_ingestion_jobs")
       .select("*")
       .eq("edition_id", editionId)
@@ -30,8 +30,8 @@ export async function GET(
       .order("created_at", { ascending: false });
 
     // Parse source_r2_key
-    let parsedKey = null;
-    let parseError = null;
+    let parsedKey: any = null;
+    let parseError: string | null = null;
     if (edition?.source_r2_key) {
       try {
         parsedKey = JSON.parse(edition.source_r2_key);
@@ -52,7 +52,7 @@ export async function GET(
         source_r2_key_type: typeof edition?.source_r2_key,
         source_r2_key_length: edition?.source_r2_key?.length,
       },
-      uploadJobs: uploadJobs?.map(job => ({
+      uploadJobs: uploadJobs?.map((job: any) => ({
         id: job.id,
         status: job.status,
         created_at: job.created_at,
