@@ -258,6 +258,10 @@ export default function EditionDetailPage() {
           prev.map(f => f.id === fileItem.id ? { ...f, progress: 30 } : f)
         );
 
+        console.log(`[Upload] Uploading ${fileItem.file.name} to R2...`);
+        console.log(`[Upload] URL: ${urlResult.uploadUrl.substring(0, 100)}...`);
+        console.log(`[Upload] File size: ${fileItem.file.size} bytes`);
+
         const uploadResponse = await fetch(urlResult.uploadUrl, {
           method: "PUT",
           body: fileItem.file,
@@ -266,9 +270,15 @@ export default function EditionDetailPage() {
           },
         });
 
+        console.log(`[Upload] R2 response status: ${uploadResponse.status} ${uploadResponse.statusText}`);
+
         if (!uploadResponse.ok) {
-          throw new Error(`Upload failed: ${uploadResponse.status}`);
+          const errorText = await uploadResponse.text().catch(() => "");
+          console.error(`[Upload] R2 error response:`, errorText);
+          throw new Error(`R2 upload failed: ${uploadResponse.status} ${uploadResponse.statusText} - ${errorText}`);
         }
+
+        console.log(`[Upload] ✓ R2 upload successful for ${fileItem.file.name}`);
 
         // Step 3: Confirm upload
         setFilesToUpload(prev => 
