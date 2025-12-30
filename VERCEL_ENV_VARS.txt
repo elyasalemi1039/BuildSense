@@ -1,0 +1,36 @@
+VERCEL ENVIRONMENT VARIABLES
+============================
+
+Add these to Vercel Dashboard → Your Project → Settings → Environment Variables:
+
+1. CLOUDFLARE_NCC_INGEST_ENQUEUE_URL
+   Value: https://buildsense-ncc-ingest.elyasalemi10.workers.dev/enqueue
+
+2. CLOUDFLARE_NCC_INGEST_ENQUEUE_TOKEN
+   Value: 0ffb3539e63e8c8c1be4f8d4ca1e155a55b47767ca316807694f31d7875d2563
+
+After adding these, redeploy your Vercel app (or it will auto-deploy on next push).
+
+============================
+TESTING THE WORKER
+============================
+
+Test the enqueue endpoint:
+
+curl -X POST https://buildsense-ncc-ingest.elyasalemi10.workers.dev/enqueue \
+  -H "Authorization: Bearer 0ffb3539e63e8c8c1be4f8d4ca1e155a55b47767ca316807694f31d7875d2563" \
+  -H "Content-Type: application/json" \
+  -d '{"ingestRunId":"test-123"}'
+
+Expected response: {"ok":true,"ingestRunId":"test-123"}
+
+============================
+MONITORING
+============================
+
+Watch live Worker logs:
+cd /Users/elyasalemi/Desktop/Websites/BuildSense/workers/ncc-ingest
+npx wrangler tail
+
+============================
+

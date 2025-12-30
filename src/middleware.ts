@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtectedRoute) {
-    // Check if user has a valid session by looking for any Supabase auth cookies
+    // Check if user has a valid session AND exists in DB
     const cookies = request.cookies.getAll();
     const hasAuthCookie = cookies.some((cookie) => 
       cookie.name.startsWith("sb-") && cookie.name.includes("auth-token")
@@ -26,6 +26,28 @@ export async function middleware(request: NextRequest) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirectTo", pathname);
       return NextResponse.redirect(loginUrl);
+    }
+
+    // Verify user exists in profiles table (catches deleted accounts)
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+      
+      // If user has auth but no profile, sign them out and redirect
+      if (!profile) {
+        await supabase.auth.signOut();
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirectTo", pathname);
+        loginUrl.searchParams.set("error", "account_not_found");
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 

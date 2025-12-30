@@ -49,16 +49,18 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log("[Upload Confirm] Starting...");
+    
     const { userId } = await requireAdmin();
     const { id: editionId } = await params;
     
-    console.log(`[Upload Confirm] Starting for edition ${editionId}`);
+    console.log(`[Upload Confirm] Admin check passed. Edition: ${editionId}, User: ${userId}`);
     
     const supabase = await createClient();
     const body = await request.json();
     const { objectKey, fileSize, volume } = body;
     
-    console.log(`[Upload Confirm] Received: objectKey=${objectKey}, volume=${volume}, size=${fileSize}`);
+    console.log(`[Upload Confirm] Body parsed: objectKey=${objectKey}, volume=${volume}, size=${fileSize}`);
 
     // Verify edition exists (and admin has access)
     const { data: edition, error: getError } = await supabase
@@ -93,10 +95,13 @@ export async function POST(
     }
 
     // Enqueue background ingest
+    console.log(`[Upload Confirm] Enqueueing ingest run ${ingestRun.id}...`);
     try {
       await enqueueIngestRun(ingestRun.id);
+      console.log(`[Upload Confirm] Enqueue successful`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to enqueue";
+      console.error(`[Upload Confirm] Enqueue failed:`, e);
       await (supabase as any)
         .from("ncc_ingest_run")
         .update({ status: "failed", error: msg, finished_at: new Date().toISOString() })
