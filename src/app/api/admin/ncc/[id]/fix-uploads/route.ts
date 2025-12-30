@@ -16,7 +16,7 @@ export async function POST(
     const supabase = await createClient();
 
     // Get all successful upload jobs for this edition
-    const { data: uploadJobs, error: jobsError } = await supabase
+    const { data: uploadJobs, error: jobsError } = await (supabase as any)
       .from("ncc_ingestion_jobs")
       .select("*")
       .eq("edition_id", editionId)
@@ -35,7 +35,7 @@ export async function POST(
     // Extract object keys and volumes from logs
     const uploadedFiles: Array<{ key: string; volume: string; size: number; uploadedAt: string }> = [];
 
-    for (const job of uploadJobs) {
+    for (const job of uploadJobs as any[]) {
       const logs = job.logs || "";
       
       // Parse logs to extract object key and volume
