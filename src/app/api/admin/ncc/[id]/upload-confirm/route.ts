@@ -24,9 +24,14 @@ async function enqueueIngestRun(ingestRunId: string) {
   const enqueueUrl = process.env.CLOUDFLARE_NCC_INGEST_ENQUEUE_URL;
   const token = process.env.CLOUDFLARE_NCC_INGEST_ENQUEUE_TOKEN;
 
+  console.log(`[Enqueue] URL: ${enqueueUrl || "NOT SET"}`);
+  console.log(`[Enqueue] Token: ${token ? "SET (length: " + token.length + ")" : "NOT SET"}`);
+
   if (!enqueueUrl || !token) {
     throw new Error("Missing CLOUDFLARE_NCC_INGEST_ENQUEUE_URL or CLOUDFLARE_NCC_INGEST_ENQUEUE_TOKEN");
   }
+
+  console.log(`[Enqueue] Calling ${enqueueUrl} with ingestRunId: ${ingestRunId}`);
 
   const res = await fetch(enqueueUrl, {
     method: "POST",
@@ -37,11 +42,16 @@ async function enqueueIngestRun(ingestRunId: string) {
     body: JSON.stringify({ ingestRunId }),
   });
 
+  console.log(`[Enqueue] Response status: ${res.status} ${res.statusText}`);
+
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     const msg = (json && (json.error || json.message)) || res.statusText;
-    throw new Error(`Failed to enqueue ingest run: ${msg}`);
+    console.error(`[Enqueue] Error response:`, json);
+    throw new Error(`Failed to enqueue ingest run: ${msg} (URL: ${enqueueUrl}, Status: ${res.status})`);
   }
+
+  console.log(`[Enqueue] Success:`, json);
 }
 
 export async function POST(
