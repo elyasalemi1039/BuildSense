@@ -1,0 +1,22 @@
+name = "buildsense-ncc-ingest"
+main = "src/index.ts"
+compatibility_date = "2025-12-30"
+
+[vars]
+# Set these in the Cloudflare dashboard or via `wrangler secret put`
+# SUPABASE_URL = "https://xxxxx.supabase.co"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "buildsense-files"
+
+[[queues.consumers]]
+queue = "ncc-ingest"
+max_batch_size = 1
+max_batch_timeout = 5
+
+[[queues.producers]]
+binding = "NCC_INGEST_QUEUE"
+queue = "ncc-ingest"
+
+

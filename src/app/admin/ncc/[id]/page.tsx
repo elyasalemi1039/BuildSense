@@ -7,8 +7,6 @@ import Link from "next/link";
 import { 
   ArrowLeft, 
   Upload, 
-  Play, 
-  Search, 
   Globe, 
   RefreshCw, 
   CheckCircle2, 
@@ -66,6 +64,18 @@ const NCC_VOLUMES = [
   { value: "housing_provisions", label: "Housing Provisions", description: "Combined Class 1 and 10" },
 ];
 
+type IngestRunStatus = "queued" | "running" | "done" | "failed";
+interface IngestRun {
+  id: string;
+  edition: string;
+  volume: string;
+  r2_zip_key: string;
+  status: IngestRunStatus;
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
 interface FileWithVolume {
   id: string;
   file: File;
@@ -82,6 +92,7 @@ export default function EditionDetailPage() {
 
   const [edition, setEdition] = useState<NCCEdition | null>(null);
   const [jobs, setJobs] = useState<NCCIngestionJob[]>([]);
+  const [ingestRuns, setIngestRuns] = useState<IngestRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [filesToUpload, setFilesToUpload] = useState<FileWithVolume[]>([]);
@@ -103,16 +114,32 @@ export default function EditionDetailPage() {
     setLoading(false);
   }, [editionId]);
 
+  const loadIngestRuns = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/ncc/${editionId}/ingest-runs`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to load ingest runs");
+      setIngestRuns(json?.runs || []);
+    } catch (e) {
+      console.error("Failed to load ingest runs:", e);
+    }
+  }, [editionId]);
+
   useEffect(() => {
     loadData();
+    loadIngestRuns();
     // Poll for updates when there's an active job
     const interval = setInterval(() => {
-      if (jobs.some((j) => j.status === "running" || j.status === "partial")) {
-        loadData();
-      }
+      const hasActiveJob = jobs.some((j) => j.status === "running" || j.status === "partial");
+      const hasActiveRun = ingestRuns.some((r) => r.status === "queued" || r.status === "running");
+      if (hasActiveJob) loadData();
+      if (hasActiveRun) loadIngestRuns();
     }, 3000);
     return () => clearInterval(interval);
-  }, [loadData, jobs]);
+  }, [loadData, loadIngestRuns, jobs, ingestRuns]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -275,6 +302,8 @@ export default function EditionDetailPage() {
             objectKey: urlResult.objectKey 
           } : f)
         );
+        // Refresh ingest runs list (new pipeline)
+        await loadIngestRuns();
 
       } catch (error) {
         console.error("Upload error:", error);
@@ -295,56 +324,6 @@ export default function EditionDetailPage() {
       toast.success(`${successCount} file(s) uploaded successfully`, {
         description: "You can now parse the XML files",
       });
-    }
-  };
-
-  const handleParse = async () => {
-    setActionLoading("parse");
-    try {
-      const response = await fetch(`/api/admin/ncc/${editionId}/parse`, {
-        method: "POST",
-      });
-      const result = await response.json();
-
-      if (result.error) {
-        toast.error("Parse failed", { description: result.error });
-      } else if (result.status === "partial") {
-        toast.info("Parsing in progress...", { 
-          description: `Processed ${result.filesProcessed}/${result.filesTotal} files. Click Parse again to continue.` 
-        });
-      } else {
-        toast.success("Parse complete!", {
-          description: `Processed ${result.filesProcessed} files`,
-        });
-      }
-      loadData();
-    } catch (error) {
-      toast.error("Parse failed");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleIndex = async () => {
-    setActionLoading("index");
-    try {
-      const response = await fetch(`/api/admin/ncc/${editionId}/index`, {
-        method: "POST",
-      });
-      const result = await response.json();
-
-      if (result.error) {
-        toast.error("Index failed", { description: result.error });
-      } else {
-        toast.success("Index complete!", {
-          description: `Indexed ${result.nodesIndexed} nodes`,
-        });
-      }
-      loadData();
-    } catch (error) {
-      toast.error("Index failed");
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -412,15 +391,12 @@ export default function EditionDetailPage() {
     );
   }
 
-  const latestParseJob = jobs.find((j) => j.job_type === "PARSE");
   const canUpload = edition.status === "draft" || edition.status === "uploaded";
-  const canParse = edition.status === "uploaded" || edition.status === "draft" || latestParseJob?.status === "partial";
-  const canIndex = edition.status === "parsed";
-  const canPublish = edition.status === "indexed" || edition.status === "parsed";
+  const canPublish = true;
   const canDelete = edition.status !== "published";
   const hasUploadedFile = !!edition.source_r2_key;
   const pendingFiles = filesToUpload.filter(f => f.status === "pending");
-  const allFilesUploaded = filesToUpload.length > 0 && filesToUpload.every(f => f.status === "uploaded");
+  const allRunsDone = ingestRuns.length > 0 && ingestRuns.every(r => r.status === "done");
 
   return (
     <div className="space-y-6">
@@ -641,68 +617,70 @@ export default function EditionDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Pipeline Actions */}
+      {/* Ingest Runs (new pipeline) */}
       <Card>
         <CardHeader>
-          <CardTitle>Ingestion Pipeline</CardTitle>
+          <CardTitle>Ingest Runs</CardTitle>
           <CardDescription>
-            Parse uploaded XML files, build search index, and publish
+            Background ingest jobs run in Cloudflare (downloads ZIP, unzips, ingests XML + images)
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {/* Parse */}
-            <Button 
-              onClick={handleParse} 
-              disabled={!canParse || actionLoading === "parse"}
-              variant={latestParseJob?.status === "partial" ? "default" : "outline"}
-            >
-              {actionLoading === "parse" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="mr-2 h-4 w-4" />
-              )}
-              {latestParseJob?.status === "partial" ? "Continue Parse" : "Parse XML"}
-            </Button>
+          {ingestRuns.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No ingest runs yet. Upload ZIPs above to start ingestion.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {ingestRuns.map((run) => (
+                <div key={run.id} className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{run.volume}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {run.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Created: {new Date(run.created_at).toLocaleString()}
+                      {run.finished_at ? ` • Finished: ${new Date(run.finished_at).toLocaleString()}` : ""}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground break-all">
+                      ZIP: {run.r2_zip_key}
+                    </div>
+                    {run.error && (
+                      <div className="mt-2 text-xs text-destructive whitespace-pre-wrap">
+                        {run.error}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-            {/* Index */}
-            <Button 
-              onClick={handleIndex} 
-              disabled={!canIndex || actionLoading === "index"}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              onClick={loadIngestRuns}
               variant="outline"
+              disabled={actionLoading === "refresh"}
             >
-              {actionLoading === "index" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="mr-2 h-4 w-4" />
-              )}
-              Build Index
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
             </Button>
 
-            {/* Publish */}
             <Button 
               onClick={handlePublish} 
-              disabled={!canPublish || actionLoading === "publish"}
+              disabled={actionLoading === "publish" || !allRunsDone}
             >
               {actionLoading === "publish" ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Globe className="mr-2 h-4 w-4" />
               )}
-              Publish
+              Publish (requires all runs done)
             </Button>
           </div>
-
-          {/* Progress for partial parse */}
-          {latestParseJob?.status === "partial" && (
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Parse Progress</span>
-                <span>{latestParseJob.files_processed}/{latestParseJob.files_total} files</span>
-              </div>
-              <Progress value={latestParseJob.progress} />
-            </div>
-          )}
         </CardContent>
       </Card>
 

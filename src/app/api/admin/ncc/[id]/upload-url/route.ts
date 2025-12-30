@@ -5,6 +5,15 @@ import { r2Client, R2_BUCKET_NAME } from "@/lib/storage/r2";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+export const runtime = "nodejs";
+
+function normalizeVolumeKey(input: unknown): string {
+  const v = typeof input === "string" ? input : "unknown";
+  // expected UI values: volume_one|volume_two|volume_three|housing_provisions
+  if (["volume_one", "volume_two", "volume_three", "housing_provisions"].includes(v)) return v;
+  return "unknown";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -31,11 +40,11 @@ export async function POST(
 
     // Get volume from request body
     const body = await request.json().catch(() => ({}));
-    const volume = body.volume || "unknown";
+    const volume = normalizeVolumeKey(body.volume);
 
-    // Generate unique object key with volume prefix
-    const uploadId = crypto.randomUUID();
-    const objectKey = `ncc/raw/${editionId}/${volume}/${uploadId}.zip`;
+    // Generate unique object key (deterministic structure for ingest pipeline)
+    const runId = crypto.randomUUID();
+    const objectKey = `ncc/${editionId}/${volume}/zip/${runId}.zip`;
 
     // Check if R2 is configured
     if (!r2Client) {
@@ -73,6 +82,8 @@ export async function POST(
     return successResponse({
       uploadUrl,
       objectKey,
+      runId,
+      volume,
     });
   } catch (error) {
     console.error("Upload URL error:", error);

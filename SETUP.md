@@ -124,6 +124,12 @@ R2_ACCOUNT_ID=your-cloudflare-account-id
 R2_ACCESS_KEY_ID=your-r2-access-key-id
 R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 R2_BUCKET_NAME=buildsense-files
+
+# NCC Ingest (Required for parsing ZIP contents)
+# This should point to your Cloudflare Worker enqueue endpoint:
+#   https://<your-worker>.<your-subdomain>.workers.dev/enqueue
+CLOUDFLARE_NCC_INGEST_ENQUEUE_URL=https://your-worker.workers.dev/enqueue
+CLOUDFLARE_NCC_INGEST_ENQUEUE_TOKEN=your-long-random-token
 ```
 
 ### Setting up Cloudflare R2
@@ -137,6 +143,17 @@ R2_BUCKET_NAME=buildsense-files
 7. Your Account ID is in the URL: `dash.cloudflare.com/[ACCOUNT_ID]/r2`
 
 **Note:** R2 is optional for local development. The app will skip file uploads when R2 is not configured.
+
+### NCC Ingest Worker (Cloudflare Queue)
+
+This app uses a **Cloudflare Worker + Queue** to ingest NCC ZIPs in the background (no Vercel timeouts):
+
+- downloads ZIP from R2
+- finds `XML/` and `Images/` folders
+- ingests all XML files + uploads assets to R2
+- writes normalized DB tables for documents/blocks/references/assets
+
+Worker code lives at `workers/ncc-ingest/`.
 
 Already added? ✅ Good to go!
 
