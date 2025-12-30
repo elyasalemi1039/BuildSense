@@ -248,7 +248,7 @@ export default function EditionDetailPage() {
           prev.map(f => f.id === fileItem.id ? { ...f, progress: 80 } : f)
         );
 
-        await fetch(`/api/admin/ncc/${editionId}/upload-confirm`, {
+        const confirmResponse = await fetch(`/api/admin/ncc/${editionId}/upload-confirm`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -257,6 +257,14 @@ export default function EditionDetailPage() {
             volume: fileItem.volume,
           }),
         });
+
+        const confirmResult = await confirmResponse.json();
+        
+        if (!confirmResponse.ok || confirmResult.error) {
+          throw new Error(`Confirm failed: ${confirmResult.error || confirmResponse.statusText}`);
+        }
+
+        console.log(`✓ Confirmed upload for ${fileItem.volume}:`, confirmResult);
 
         // Mark as uploaded
         setFilesToUpload(prev => 
