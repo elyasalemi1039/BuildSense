@@ -7,7 +7,7 @@ Add these to Vercel Dashboard → Your Project → Settings → Environment Vari
    Value: https://buildsense-ncc-ingest.elyasalemi10.workers.dev/enqueue
 
 2. CLOUDFLARE_NCC_INGEST_ENQUEUE_TOKEN
-   Value: 0ffb3539e63e8c8c1be4f8d4ca1e155a55b47767ca316807694f31d7875d2563
+   Value: d3051026937b847b29eedf2888f74e6f08ed1724b51beb66d5a841da5dcf5dac
 
 After adding these, redeploy your Vercel app (or it will auto-deploy on next push).
 
@@ -18,7 +18,7 @@ TESTING THE WORKER
 Test the enqueue endpoint:
 
 curl -X POST https://buildsense-ncc-ingest.elyasalemi10.workers.dev/enqueue \
-  -H "Authorization: Bearer 0ffb3539e63e8c8c1be4f8d4ca1e155a55b47767ca316807694f31d7875d2563" \
+  -H "Authorization: Bearer YOUR_ENQUEUE_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -d '{"ingestRunId":"test-123"}'
 

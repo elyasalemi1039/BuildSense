@@ -4,7 +4,7 @@ This guide walks you through deploying the NCC ingest worker to Cloudflare.
 
 ## Prerequisites
 
-1. A Cloudflare account (free tier works)
+1. A Cloudflare account (Workers Paid plan - $5/month for Queues)
 2. Your Supabase project URL and service role key
 3. Your R2 bucket already created (`buildsense-files`)
 
@@ -21,14 +21,10 @@ This will open a browser window to authenticate with Cloudflare.
 
 ---
 
-## Step 2: Update `wrangler.toml` with your Account ID
+## Step 2: Create the R2 Bucket
 
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Copy your **Account ID** from the URL: `dash.cloudflare.com/[ACCOUNT_ID]`
-3. Open `wrangler.toml` and replace `YOUR_ACCOUNT_ID` with your actual account ID:
-
-```toml
-account_id = "abc123def456..."  # Your actual account ID
+```bash
+npx wrangler r2 bucket create buildsense-files
 ```
 
 ---
@@ -43,30 +39,15 @@ This creates a queue named `ncc-ingest` that the worker will consume from.
 
 ---
 
-## Step 4: Verify R2 Bucket Exists
+## Step 4: Generate and Set Worker Secrets
 
-Make sure your R2 bucket `buildsense-files` exists:
-
-```bash
-npx wrangler r2 bucket list
-```
-
-If it doesn't exist, create it:
+Generate a new random token:
 
 ```bash
-npx wrangler r2 bucket create buildsense-files
-```
-
----
-
-## Step 5: Set Worker Secrets
-
-Generate a random token for the enqueue endpoint:
-
-```bash
-# Generate a random token (copy this for later)
 openssl rand -hex 32
 ```
+
+**IMPORTANT: Copy this token - you'll need it for Vercel env vars!**
 
 Now set the secrets:
 
@@ -84,11 +65,9 @@ npx wrangler secret put ENQUEUE_TOKEN
 # Paste: the random hex token
 ```
 
-**Important:** Save the `ENQUEUE_TOKEN` value — you'll need it for Vercel env vars.
-
 ---
 
-## Step 6: Deploy the Worker
+## Step 5: Deploy the Worker
 
 ```bash
 npx wrangler deploy
@@ -97,32 +76,32 @@ npx wrangler deploy
 After deployment, you'll see output like:
 
 ```
-Published ncc-ingest (X.XX sec)
-  https://ncc-ingest.your-subdomain.workers.dev
+Published buildsense-ncc-ingest (X.XX sec)
+  https://buildsense-ncc-ingest.your-subdomain.workers.dev
 ```
 
 **Copy this URL** — you'll need it for Vercel.
 
 ---
 
-## Step 7: Set Vercel Environment Variables
+## Step 6: Set Vercel Environment Variables
 
 Go to [Vercel Dashboard](https://vercel.com/dashboard) → Your Project → Settings → Environment Variables
 
 Add these two variables:
 
 1. **`CLOUDFLARE_NCC_INGEST_ENQUEUE_URL`**
-   - Value: `https://ncc-ingest.your-subdomain.workers.dev/enqueue`
-   - (Use the URL from Step 6, add `/enqueue` at the end)
+   - Value: `https://buildsense-ncc-ingest.your-subdomain.workers.dev/enqueue`
+   - (Use the URL from Step 5, add `/enqueue` at the end)
 
 2. **`CLOUDFLARE_NCC_INGEST_ENQUEUE_TOKEN`**
-   - Value: The same random hex token you set in Step 5 as `ENQUEUE_TOKEN`
+   - Value: The same random hex token you set in Step 4 as `ENQUEUE_TOKEN`
 
 Then **redeploy** your Vercel app (or it will auto-deploy on next push).
 
 ---
 
-## Step 8: Test the Pipeline
+## Step 7: Test the Pipeline
 
 1. Go to your app: `https://your-app.vercel.app/admin/ncc`
 2. Create a new NCC edition
@@ -147,18 +126,25 @@ This streams live logs from your worker.
 npx wrangler queues list
 ```
 
-### Manually Trigger a Test (optional)
-
-You can test the enqueue endpoint with curl:
+### Test the Enqueue Endpoint
 
 ```bash
-curl -X POST https://ncc-ingest.your-subdomain.workers.dev/enqueue \
-  -H "Authorization: Bearer YOUR_ENQUEUE_TOKEN" \
+curl -X POST https://buildsense-ncc-ingest.your-subdomain.workers.dev/enqueue \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -H "Content-Type: application/json" \
-  -d '{"ingestRunId":"test-run-id"}'
+  -d '{"ingestRunId":"test-123"}'
 ```
 
-If it works, you'll see: `{"success":true,"message":"Ingest job enqueued"}`
+Expected response: `{"ok":true,"ingestRunId":"test-123"}`
+
+---
+
+## Security Notes
+
+⚠️ **NEVER commit secrets to git!**
+- The `ENQUEUE_TOKEN` should only exist in Cloudflare Worker secrets and Vercel env vars
+- Generate a new token with `openssl rand -hex 32` if you suspect it's been exposed
+- Rotate secrets immediately if they appear in git history
 
 ---
 
