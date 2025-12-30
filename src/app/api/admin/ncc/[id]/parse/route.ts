@@ -115,50 +115,64 @@ export async function POST(
 
     // Get XML files from uploaded ZIPs or use sample data for development
     let xmlFiles: XmlFile[] = [];
+    let jobLogs = job.logs || "";
+    
+    jobLogs += `\nSource R2 key: ${edition?.source_r2_key || 'null'}\n`;
+    jobLogs += `R2 client configured: ${!!r2Client}\n`;
     
     if (edition?.source_r2_key && r2Client) {
       // Parse the source_r2_key (could be JSON array or single string)
       let uploadedFiles: Array<{ key: string; volume: string }> = [];
       
       try {
-        uploadedFiles = JSON.parse(edition.source_r2_key);
-      } catch {
+        const parsed = JSON.parse(edition.source_r2_key);
+        if (Array.isArray(parsed)) {
+          uploadedFiles = parsed;
+        } else {
+          uploadedFiles = [parsed];
+        }
+        jobLogs += `Parsed ${uploadedFiles.length} uploaded ZIP files\n`;
+      } catch (e) {
         // Legacy single file format
         uploadedFiles = [{ key: edition.source_r2_key, volume: "unknown" }];
+        jobLogs += `Legacy format - single file: ${edition.source_r2_key}\n`;
       }
 
       // Fetch and extract each ZIP file
       for (const uploadedFile of uploadedFiles) {
+        jobLogs += `\nProcessing ZIP: ${uploadedFile.key} (${uploadedFile.volume})\n`;
+        
         try {
           const filesFromZip = await extractXmlFromR2Zip(uploadedFile.key, uploadedFile.volume);
           xmlFiles.push(...filesFromZip);
+          jobLogs += `  ✓ Extracted ${filesFromZip.length} XML files\n`;
           
-          await (supabase as AnySupabase)
-            .from("ncc_ingestion_jobs")
-            .update({
-              logs: job.logs + `Extracted ${filesFromZip.length} XML files from ${uploadedFile.volume} (${uploadedFile.key})\n`
-            })
-            .eq("id", job.id);
+          // Log first few file names for debugging
+          if (filesFromZip.length > 0) {
+            const sampleNames = filesFromZip.slice(0, 3).map(f => f.name);
+            jobLogs += `  Sample files: ${sampleNames.join(', ')}\n`;
+          }
         } catch (error) {
           console.error(`Error extracting ${uploadedFile.key}:`, error);
-          await (supabase as AnySupabase)
-            .from("ncc_ingestion_jobs")
-            .update({
-              logs: job.logs + `Error extracting ${uploadedFile.key}: ${error instanceof Error ? error.message : "Unknown error"}\n`
-            })
-            .eq("id", job.id);
+          jobLogs += `  ✗ Error: ${error instanceof Error ? error.message : "Unknown error"}\n`;
         }
       }
-    } else {
+      
+      jobLogs += `\nTotal XML files found: ${xmlFiles.length}\n`;
+    } else if (!r2Client) {
       // Use sample data for development
       xmlFiles = getSampleXmlFiles();
-      await (supabase as AnySupabase)
-        .from("ncc_ingestion_jobs")
-        .update({
-          logs: job.logs + `R2 not configured or no files uploaded. Using ${xmlFiles.length} sample files.\n`
-        })
-        .eq("id", job.id);
+      jobLogs += `R2 not configured. Using ${xmlFiles.length} sample files.\n`;
+    } else {
+      jobLogs += `No source_r2_key found on edition.\n`;
     }
+    
+    // Update logs
+    await (supabase as AnySupabase)
+      .from("ncc_ingestion_jobs")
+      .update({ logs: jobLogs })
+      .eq("id", job.id);
+    job.logs = jobLogs;
 
     if (xmlFiles.length === 0) {
       return errorResponse("No XML files found to parse", 400);
@@ -337,6 +351,8 @@ async function extractXmlFromR2Zip(objectKey: string, volume: string): Promise<X
     throw new Error("R2 client not configured");
   }
 
+  console.log(`[ZIP Extract] Fetching from R2: ${objectKey}`);
+
   // Fetch the ZIP file from R2
   const command = new GetObjectCommand({
     Bucket: R2_BUCKET_NAME,
@@ -360,35 +376,58 @@ async function extractXmlFromR2Zip(objectKey: string, volume: string): Promise<X
   }
   
   const buffer = Buffer.concat(chunks);
+  console.log(`[ZIP Extract] Downloaded ${buffer.length} bytes`);
 
   // Extract ZIP contents
   const zip = await JSZip.loadAsync(buffer);
   const xmlFiles: XmlFile[] = [];
+  
+  // Log all files in the ZIP for debugging
+  const allPaths = Object.keys(zip.files);
+  console.log(`[ZIP Extract] ZIP contains ${allPaths.length} entries`);
+  console.log(`[ZIP Extract] Sample paths: ${allPaths.slice(0, 5).join(', ')}`);
 
   // Process each file in the ZIP
   for (const [path, file] of Object.entries(zip.files)) {
-    // Skip directories and non-XML files
-    if (file.dir || !path.toLowerCase().endsWith(".xml")) {
+    // Skip directories
+    if (file.dir) {
+      continue;
+    }
+    
+    // Check if it's an XML file (case insensitive)
+    if (!path.toLowerCase().endsWith(".xml")) {
       continue;
     }
 
     // Skip hidden files and macOS resource forks
-    if (path.startsWith("__MACOSX") || path.includes("/.") || path.startsWith(".")) {
+    if (path.startsWith("__MACOSX") || path.includes("/__") || path.startsWith(".")) {
+      continue;
+    }
+    
+    // Skip .DS_Store and other hidden files
+    const fileName = path.split("/").pop() || "";
+    if (fileName.startsWith(".")) {
       continue;
     }
 
     try {
       const content = await file.async("string");
+      
+      // Use just the filename (without folder path) for uniqueness
+      // But prefix with volume to avoid conflicts
+      const uniqueName = `${volume}/${path}`;
+      
       xmlFiles.push({
-        name: path,
+        name: uniqueName,
         content,
         volume,
       });
     } catch (error) {
-      console.error(`Error reading ${path}:`, error);
+      console.error(`[ZIP Extract] Error reading ${path}:`, error);
     }
   }
 
+  console.log(`[ZIP Extract] Extracted ${xmlFiles.length} XML files from ${objectKey}`);
   return xmlFiles;
 }
 
