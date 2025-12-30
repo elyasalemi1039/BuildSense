@@ -47,7 +47,7 @@ export async function POST(
     });
 
     // Update edition with the R2 keys and status
-    await (supabase as any)
+    const { error: updateError } = await (supabase as any)
       .from("ncc_editions")
       .update({ 
         source_r2_key: JSON.stringify(uploadedFiles),
@@ -55,6 +55,13 @@ export async function POST(
         updated_at: new Date().toISOString() 
       })
       .eq("id", editionId);
+    
+    if (updateError) {
+      console.error("Failed to update edition:", updateError);
+      return errorResponse(`Failed to update edition: ${updateError.message}`, 500);
+    }
+    
+    console.log(`Updated edition ${editionId} with ${uploadedFiles.length} files`);
 
     // Update the UPLOAD job record to success
     await (supabase as any)
