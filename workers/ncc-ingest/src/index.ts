@@ -226,6 +226,19 @@ async function ingestRun(env: Env, ingestRunId: string) {
       for (const p of imagePaths) {
         const filename = p.split("/").pop() || p;
         const r2Key = `ncc/${run.edition}/${run.volume}/assets/${filename}`;
+        
+        // Check if asset already exists for this run
+        const existing = await sbSelectSingle<{ id: string; r2_key: string; filename: string } | null>(
+          env,
+          "ncc_asset",
+          `ingest_run_id=eq.${run.id}&r2_key=eq.${encodeURIComponent(r2Key)}`
+        ).catch(() => null);
+        
+        if (existing) {
+          assetByFilename.set(filename, { id: existing.id, r2_key: existing.r2_key });
+          continue;
+        }
+        
         await env.R2_BUCKET.put(r2Key, zipEntries[p], {
           httpMetadata: {
             contentType: contentTypeFor(filename),
@@ -243,7 +256,7 @@ async function ingestRun(env: Env, ingestRunId: string) {
             },
           ],
           true,
-          true // upsert = true
+          false // don't use upsert, we already checked for duplicates
         );
         if (inserted[0]) assetByFilename.set(filename, { id: inserted[0].id, r2_key: inserted[0].r2_key });
       }
