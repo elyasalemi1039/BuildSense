@@ -109,10 +109,19 @@ async function sbUpdate(env: Env, table: string, filter: string, patch: unknown)
   }
 }
 
-async function sbInsert<T>(env: Env, table: string, rows: unknown[], returnRep = false): Promise<T[]> {
+async function sbInsert<T>(env: Env, table: string, rows: unknown[], returnRep = false, upsert = false): Promise<T[]> {
+  const headers: Record<string, string> = {
+    Prefer: returnRep ? "return=representation" : "return=minimal",
+  };
+  
+  // Add upsert header if requested
+  if (upsert) {
+    headers.Prefer = `resolution=merge-duplicates,${headers.Prefer}`;
+  }
+  
   const res = await sbFetch(env, `/rest/v1/${table}`, {
     method: "POST",
-    headers: { Prefer: returnRep ? "return=representation" : "return=minimal" },
+    headers,
     body: JSON.stringify(rows),
   });
   if (!res.ok) {
@@ -233,7 +242,8 @@ async function ingestRun(env: Env, ingestRunId: string) {
               r2_key: r2Key,
             },
           ],
-          true
+          true,
+          true // upsert = true
         );
         if (inserted[0]) assetByFilename.set(filename, { id: inserted[0].id, r2_key: inserted[0].r2_key });
       }
