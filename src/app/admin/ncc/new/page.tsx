@@ -15,12 +15,12 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createNccEdition } from "@/lib/actions/ncc";
-import { 
-  EDITION_KINDS, 
-  JURISDICTIONS, 
-  LEGAL_STATUSES, 
-  PUBLICATION_STATUSES,
+import { createEdition } from "@/lib/actions/ncc";
+import {
+  EDITION_KINDS,
+  JURISDICTIONS,
+  LEGAL_STATUSES,
+  EDITION_STATUSES,
 } from "@/lib/constants/ncc-options";
 
 type EditionFormData = {
@@ -29,7 +29,7 @@ type EditionFormData = {
   edition_kind: string;
   jurisdiction: string;
   legal_status: string;
-  publication_status: string;
+  edition_status: string;
   year: number;
   version: string;
   effective_date: string;
@@ -44,9 +44,9 @@ export default function NewNccEditionPage() {
     name: "",
     description: "",
     edition_kind: "BASE",
-    jurisdiction: "AUSTRALIA_NATIONAL",
-    legal_status: "ADOPTED",
-    publication_status: "DRAFT",
+    jurisdiction: "NSW",
+    legal_status: "adopted",
+    edition_status: "draft",
     year: new Date().getFullYear(),
     version: "1.0",
     effective_date: "",
@@ -62,9 +62,9 @@ export default function NewNccEditionPage() {
         name: "National Construction Code 2025",
         description: "The 2025 edition of the National Construction Code",
         edition_kind: "BASE",
-        jurisdiction: "AUSTRALIA_NATIONAL",
-        legal_status: "ADOPTED",
-        publication_status: "PUBLISHED",
+        jurisdiction: "NSW",
+        legal_status: "adopted",
+        edition_status: "draft",
         year: 2025,
         version: "1.0",
         effective_date: "2025-05-01",
@@ -74,9 +74,9 @@ export default function NewNccEditionPage() {
         name: "National Construction Code 2019",
         description: "The 2019 edition of the National Construction Code",
         edition_kind: "BASE",
-        jurisdiction: "AUSTRALIA_NATIONAL",
-        legal_status: "ADOPTED",
-        publication_status: "PUBLISHED",
+        jurisdiction: "NSW",
+        legal_status: "adopted",
+        edition_status: "draft",
         year: 2019,
         version: "1.0",
         effective_date: "2019-05-01",
@@ -90,9 +90,15 @@ export default function NewNccEditionPage() {
     setError(null);
 
     try {
-      const result = await createNccEdition(formData);
-      if (result.success && result.data) {
-        router.push(`/admin/ncc/${result.data.id}`);
+      const result = await createEdition({
+        name: formData.name,
+        kind: formData.edition_kind,
+        effective_date: formData.effective_date,
+        jurisdiction: formData.jurisdiction,
+      });
+      
+      if (result.edition) {
+        router.push(`/admin/ncc/${result.edition.id}`);
       } else {
         setError(result.error || "Failed to create edition");
       }
@@ -227,8 +233,8 @@ export default function NewNccEditionPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {EDITION_KINDS.map((kind) => (
-                        <SelectItem key={kind.value} value={kind.value}>
-                          {kind.label}
+                        <SelectItem key={kind} value={kind}>
+                          {kind}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -272,8 +278,8 @@ export default function NewNccEditionPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {LEGAL_STATUSES.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
+                        <SelectItem key={status} value={status}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -281,20 +287,20 @@ export default function NewNccEditionPage() {
                 </div>
 
                       <div>
-                  <Label htmlFor="publication_status">Publication Status</Label>
+                  <Label htmlFor="edition_status">Edition Status</Label>
                   <Select
-                    value={formData.publication_status}
+                    value={formData.edition_status}
                     onValueChange={(value) =>
-                      updateField("publication_status", value)
+                      updateField("edition_status", value)
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PUBLICATION_STATUSES.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
+                      {EDITION_STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
