@@ -208,11 +208,27 @@ async function ingestRun(env: Env, ingestRunId: string) {
 
   // Clean up any existing data from a previous failed attempt
   // This ensures idempotency - we can safely retry the same run
-  // Delete in reverse order of foreign key dependencies
-  // The CASCADE on DELETE should handle most of this, but we'll be explicit
-  await sbDelete(env, "ncc_asset", `ingest_run_id=eq.${ingestRunId}`).catch(() => {}); // Will cascade to asset_placement
-  await sbDelete(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}`).catch(() => {}); // Will cascade to blocks, references
-  await sbDelete(env, "ncc_xml_object", `ingest_run_id=eq.${ingestRunId}`).catch(() => {});
+  // First get all document IDs for this run
+  const existingDocs = await sbSelect<{ id: string }>(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}&select=id`);
+  if (existingDocs.length > 0) {
+    const docIds = existingDocs.map(d => d.id).join(',');
+    // Delete references that point to these documents
+    try {
+      await sbDelete(env, "ncc_reference", `from_document_id=in.(${docIds})`);
+    } catch (e) {
+      // Ignore
+    }
+    try {
+      await sbDelete(env, "ncc_reference", `target_document_id=in.(${docIds})`);
+    } catch (e) {
+      // Ignore
+    }
+  }
+  
+  // Now delete the main tables (CASCADE will handle children)
+  await sbDelete(env, "ncc_asset", `ingest_run_id=eq.${ingestRunId}`); // Will cascade to asset_placement
+  await sbDelete(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}`); // Will cascade to blocks
+  await sbDelete(env, "ncc_xml_object", `ingest_run_id=eq.${ingestRunId}`);
 
   await sbUpdate(env, "ncc_ingest_run", `id=eq.${ingestRunId}`, {
     status: "running",
