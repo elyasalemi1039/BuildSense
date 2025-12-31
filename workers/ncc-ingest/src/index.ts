@@ -109,6 +109,17 @@ async function sbUpdate(env: Env, table: string, filter: string, patch: unknown)
   }
 }
 
+async function sbDelete(env: Env, table: string, filter: string): Promise<void> {
+  const res = await sbFetch(env, `/rest/v1/${table}?${filter}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Supabase delete failed: ${table} (${res.status}) ${text}`);
+  }
+}
+
 async function sbInsert<T>(env: Env, table: string, rows: unknown[], returnRep = false, upsert = false): Promise<T[]> {
   const headers: Record<string, string> = {
     Prefer: returnRep ? "return=representation" : "return=minimal",
@@ -195,6 +206,14 @@ async function ingestRun(env: Env, ingestRunId: string) {
   if (run.status === "done") return;
   if (run.status === "running") return;
 
+  // Clean up any existing data from a previous failed attempt
+  // This ensures idempotency - we can safely retry the same run
+  // Delete in reverse order of foreign key dependencies
+  // The CASCADE on DELETE should handle most of this, but we'll be explicit
+  await sbDelete(env, "ncc_asset", `ingest_run_id=eq.${ingestRunId}`).catch(() => {}); // Will cascade to asset_placement
+  await sbDelete(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}`).catch(() => {}); // Will cascade to blocks, references
+  await sbDelete(env, "ncc_xml_object", `ingest_run_id=eq.${ingestRunId}`).catch(() => {});
+
   await sbUpdate(env, "ncc_ingest_run", `id=eq.${ingestRunId}`, {
     status: "running",
     error: null,
@@ -227,18 +246,6 @@ async function ingestRun(env: Env, ingestRunId: string) {
         const filename = p.split("/").pop() || p;
         const r2Key = `ncc/${run.edition}/${run.volume}/assets/${filename}`;
         
-        // Check if asset already exists for this run
-        const existing = await sbSelectSingle<{ id: string; r2_key: string; filename: string } | null>(
-          env,
-          "ncc_asset",
-          `ingest_run_id=eq.${run.id}&r2_key=eq.${encodeURIComponent(r2Key)}`
-        ).catch(() => null);
-        
-        if (existing) {
-          assetByFilename.set(filename, { id: existing.id, r2_key: existing.r2_key });
-          continue;
-        }
-        
         await env.R2_BUCKET.put(r2Key, zipEntries[p], {
           httpMetadata: {
             contentType: contentTypeFor(filename),
@@ -255,8 +262,7 @@ async function ingestRun(env: Env, ingestRunId: string) {
               r2_key: r2Key,
             },
           ],
-          true,
-          false // don't use upsert, we already checked for duplicates
+          true
         );
         if (inserted[0]) assetByFilename.set(filename, { id: inserted[0].id, r2_key: inserted[0].r2_key });
       }
