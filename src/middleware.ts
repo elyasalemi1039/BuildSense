@@ -10,13 +10,13 @@ export async function middleware(request: NextRequest) {
   // Check if user is authenticated for protected routes
   const { pathname } = request.nextUrl;
 
-  // Redirect old dashboard to ncc
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-    return NextResponse.redirect(new URL("/ncc", request.url));
+  // Redirect old /ncc path to dashboard
+  if (pathname === "/ncc" || pathname.startsWith("/ncc/")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // Protected routes that require authentication
-  const protectedRoutes = ["/ncc", "/admin"];
+  const protectedRoutes = ["/dashboard", "/admin"];
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtectedRoute) {
@@ -69,7 +69,7 @@ export async function middleware(request: NextRequest) {
     if (hasAuthCookie) {
       // Check if there's a redirectTo parameter
       const redirectTo = request.nextUrl.searchParams.get("redirectTo");
-      const destination = redirectTo || "/ncc";
+      const destination = redirectTo || "/dashboard";
       return NextResponse.redirect(new URL(destination, request.url));
     }
   }

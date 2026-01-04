@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { Search, Filter, BookOpen, FileText, Loader2, Sparkles, ChevronDown, ImageIcon, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -56,7 +55,7 @@ interface NCCImage {
   url: string;
 }
 
-export default function NCCSearchPage() {
+export default function DashboardPage() {
   const [editions, setEditions] = useState<Edition[]>([]);
   const [selectedEdition, setSelectedEdition] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -172,9 +171,9 @@ export default function NCCSearchPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="container mx-auto max-w-5xl px-6 py-8 space-y-8">
       {/* Hero Section */}
-      <div className="text-center space-y-4 py-8">
+      <div className="text-center space-y-4 py-4">
         <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
           Search the{" "}
           <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
@@ -424,7 +423,7 @@ export default function NCCSearchPage() {
 
       {/* Empty State - Before Search */}
       {!hasSearched && (
-        <div className="text-center py-16">
+        <div className="text-center py-12">
           <div className="flex justify-center gap-4 mb-8">
             <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800">
               <BookOpen className="h-8 w-8 text-amber-500" />
@@ -454,4 +453,3 @@ export default function NCCSearchPage() {
     </div>
   );
 }
-
