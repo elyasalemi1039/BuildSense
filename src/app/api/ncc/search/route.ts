@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       jurisdiction: string | null;
       ingest_run_id: string;
     }) => {
-      const editionId = runEditionMap.get(doc.ingest_run_id);
+      const editionId = runEditionMap.get(doc.ingest_run_id) || "";
       return {
         id: doc.id,
         doc_type: doc.doc_type,
