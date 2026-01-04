@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = any;
+
 export async function GET() {
   try {
     const supabase = await createClient();
 
     // Get published editions
-    const { data: editions, error } = await supabase
+    const { data: editions, error } = await (supabase as AnySupabase)
       .from("ncc_editions")
       .select("id, name, effective_date, jurisdiction")
       .eq("status", "published")
-      .order("effective_date", { ascending: false }) as { 
-        data: { id: string; name: string; effective_date: string; jurisdiction: string | null }[] | null; 
-        error: any 
-      };
+      .order("effective_date", { ascending: false });
 
     if (error) {
       console.error("Failed to fetch editions:", error);
