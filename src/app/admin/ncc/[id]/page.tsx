@@ -692,20 +692,26 @@ export default function EditionDetailPage() {
               <Button
                 onClick={async () => {
                   setActionLoading("retry");
+                  console.log("[Retry] Starting retry for edition:", editionId);
                   try {
                     const res = await fetch(`/api/admin/ncc/${editionId}/retry-ingest`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                     });
+                    console.log("[Retry] Response status:", res.status);
                     const json = await res.json();
+                    console.log("[Retry] Response body:", json);
                     if (!res.ok) {
+                      console.error("[Retry] Error:", json?.error);
                       toast.error(json?.error || "Failed to retry");
                     } else {
+                      console.log("[Retry] Success:", json?.message);
                       toast.success(json?.message || "Retried queued runs");
                       await loadIngestRuns();
                     }
                   } catch (e) {
-                    toast.error("Failed to retry queued runs");
+                    console.error("[Retry] Exception:", e);
+                    toast.error(`Failed to retry: ${e instanceof Error ? e.message : "Unknown error"}`);
                   } finally {
                     setActionLoading(null);
                   }

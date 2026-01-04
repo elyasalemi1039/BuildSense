@@ -201,10 +201,18 @@ function extractImageFilenameFromDescriptor(descriptorXml: string): string | nul
 }
 
 async function ingestRun(env: Env, ingestRunId: string) {
+  console.log(`[Ingest Run ${ingestRunId}] Starting...`);
   const run = await sbSelectSingle<NccIngestRun>(env, "ncc_ingest_run", `id=eq.${ingestRunId}`);
+  console.log(`[Ingest Run ${ingestRunId}] Current status: ${run.status}`);
 
-  if (run.status === "done") return;
-  if (run.status === "running") return;
+  if (run.status === "done") {
+    console.log(`[Ingest Run ${ingestRunId}] Already done, skipping`);
+    return;
+  }
+  if (run.status === "running") {
+    console.log(`[Ingest Run ${ingestRunId}] Already running, skipping`);
+    return;
+  }
 
   // Clean up any existing data from a previous failed attempt
   // This ensures idempotency - we can safely retry the same run
@@ -501,11 +509,19 @@ export default {
   async queue(batch: MessageBatch<{ ingestRunId: string }>, env: Env) {
     for (const msg of batch.messages) {
       const ingestRunId = msg.body?.ingestRunId;
-      if (!ingestRunId) continue;
+      if (!ingestRunId) {
+        console.error("[Queue] Message missing ingestRunId:", msg.body);
+        msg.ack(); // Don't retry invalid messages
+        continue;
+      }
+      console.log(`[Queue] Processing ingest run: ${ingestRunId}`);
       try {
         await ingestRun(env, ingestRunId);
+        console.log(`[Queue] Successfully processed: ${ingestRunId}`);
         msg.ack();
       } catch (e) {
+        console.error(`[Queue] Error processing ${ingestRunId}:`, e);
+        console.error(`[Queue] Error stack:`, e instanceof Error ? e.stack : "No stack");
         // Let CF retry; we mark run failed in DB already.
         msg.retry();
       }
