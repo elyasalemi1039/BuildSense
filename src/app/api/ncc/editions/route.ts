@@ -11,7 +11,10 @@ export async function GET() {
       .from("ncc_editions")
       .select("id, name, effective_date, jurisdiction")
       .eq("status", "published")
-      .order("effective_date", { ascending: false });
+      .order("effective_date", { ascending: false }) as { 
+        data: { id: string; name: string; effective_date: string; jurisdiction: string | null }[] | null; 
+        error: any 
+      };
 
     if (error) {
       console.error("Failed to fetch editions:", error);

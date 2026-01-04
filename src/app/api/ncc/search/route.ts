@@ -18,14 +18,14 @@ export async function GET(request: NextRequest) {
     const { data: publishedEditions, error: editionsError } = await supabase
       .from("ncc_editions")
       .select("id, name")
-      .eq("status", "published");
+      .eq("status", "published") as { data: { id: string; name: string }[] | null; error: any };
 
     if (editionsError || !publishedEditions?.length) {
       return NextResponse.json({ results: [], message: "No published editions found" });
     }
 
-    const publishedEditionIds = publishedEditions.map(e => e.id);
-    const editionNameMap = new Map(publishedEditions.map(e => [e.id, e.name]));
+    const publishedEditionIds = publishedEditions.map((e: { id: string }) => e.id);
+    const editionNameMap = new Map(publishedEditions.map((e: { id: string; name: string }) => [e.id, e.name]));
 
     // Filter by specific edition if provided
     const targetEditions = editionId && editionId !== "all" 
