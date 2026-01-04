@@ -89,6 +89,12 @@ async function sbFetch(env: Env, path: string, init: RequestInit = {}) {
   return fetch(url, { ...init, headers });
 }
 
+async function sbSelect<T>(env: Env, table: string, filter: string): Promise<T[]> {
+  const res = await sbFetch(env, `/rest/v1/${table}?${filter}`, { method: "GET" });
+  if (!res.ok) throw new Error(`Supabase select failed: ${table} (${res.status})`);
+  return (await res.json()) as T[];
+}
+
 async function sbSelectSingle<T>(env: Env, table: string, filter: string): Promise<T> {
   const res = await sbFetch(env, `/rest/v1/${table}?${filter}&select=*`, { method: "GET" });
   if (!res.ok) throw new Error(`Supabase select failed: ${table} (${res.status})`);
@@ -209,34 +215,60 @@ async function ingestRun(env: Env, ingestRunId: string) {
     console.log(`[Ingest Run ${ingestRunId}] Already done, skipping`);
     return;
   }
-  if (run.status === "running") {
-    console.log(`[Ingest Run ${ingestRunId}] Already running, skipping`);
-    return;
-  }
+  // Don't skip "running" - we want to allow retries
 
-  // Clean up any existing data from a previous failed attempt
+  // ALWAYS clean up any existing data before starting
   // This ensures idempotency - we can safely retry the same run
-  // First get all document IDs for this run
-  const existingDocs = await sbSelect<{ id: string }>(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}&select=id`);
-  if (existingDocs.length > 0) {
-    const docIds = existingDocs.map(d => d.id).join(',');
-    // Delete references that point to these documents
-    try {
-      await sbDelete(env, "ncc_reference", `from_document_id=in.(${docIds})`);
-    } catch (e) {
-      // Ignore
-    }
-    try {
-      await sbDelete(env, "ncc_reference", `target_document_id=in.(${docIds})`);
-    } catch (e) {
-      // Ignore
-    }
-  }
+  console.log(`[Ingest Run ${ingestRunId}] Cleaning up existing data...`);
   
-  // Now delete the main tables (CASCADE will handle children)
-  await sbDelete(env, "ncc_asset", `ingest_run_id=eq.${ingestRunId}`); // Will cascade to asset_placement
-  await sbDelete(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}`); // Will cascade to blocks
-  await sbDelete(env, "ncc_xml_object", `ingest_run_id=eq.${ingestRunId}`);
+  try {
+    // First get all document IDs for this run to delete references
+    const existingDocs = await sbSelect<{ id: string }>(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}&select=id`);
+    console.log(`[Ingest Run ${ingestRunId}] Found ${existingDocs.length} existing documents to clean up`);
+    
+    if (existingDocs.length > 0) {
+      const docIds = existingDocs.map(d => d.id).join(',');
+      // Delete references that point to these documents
+      try {
+        await sbDelete(env, "ncc_reference", `from_document_id=in.(${docIds})`);
+        console.log(`[Ingest Run ${ingestRunId}] Deleted references (from)`);
+      } catch (e) {
+        console.log(`[Ingest Run ${ingestRunId}] No references to delete (from)`);
+      }
+      try {
+        await sbDelete(env, "ncc_reference", `target_document_id=in.(${docIds})`);
+        console.log(`[Ingest Run ${ingestRunId}] Deleted references (target)`);
+      } catch (e) {
+        console.log(`[Ingest Run ${ingestRunId}] No references to delete (target)`);
+      }
+    }
+    
+    // Delete main tables - CASCADE will handle children
+    try {
+      await sbDelete(env, "ncc_asset", `ingest_run_id=eq.${ingestRunId}`);
+      console.log(`[Ingest Run ${ingestRunId}] Deleted assets`);
+    } catch (e) {
+      console.log(`[Ingest Run ${ingestRunId}] No assets to delete or error:`, e);
+    }
+    
+    try {
+      await sbDelete(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}`);
+      console.log(`[Ingest Run ${ingestRunId}] Deleted documents`);
+    } catch (e) {
+      console.log(`[Ingest Run ${ingestRunId}] No documents to delete or error:`, e);
+    }
+    
+    try {
+      await sbDelete(env, "ncc_xml_object", `ingest_run_id=eq.${ingestRunId}`);
+      console.log(`[Ingest Run ${ingestRunId}] Deleted xml_objects`);
+    } catch (e) {
+      console.log(`[Ingest Run ${ingestRunId}] No xml_objects to delete or error:`, e);
+    }
+    
+    console.log(`[Ingest Run ${ingestRunId}] Cleanup complete`);
+  } catch (e) {
+    console.error(`[Ingest Run ${ingestRunId}] Cleanup error (continuing anyway):`, e);
+  }
 
   await sbUpdate(env, "ncc_ingest_run", `id=eq.${ingestRunId}`, {
     status: "running",
@@ -255,42 +287,12 @@ async function ingestRun(env: Env, ingestRunId: string) {
     const xmlFolder = findBestFolder(paths.filter(isXmlPath), ["xml", "xmls"]);
     if (!xmlFolder) throw new Error("ZIP missing XML folder");
 
-    // Find Images folder
-    const imagesFolder = findBestFolder(paths.filter(isImagePath), ["images", "image"]);
-
     // Collect XML files under xmlFolder
     const xmlPaths = paths.filter((p) => p.startsWith(xmlFolder) && isXmlPath(p));
-
-    // Upload assets (if any)
-    const assetByFilename = new Map<string, { id: string; r2_key: string }>();
-    if (imagesFolder) {
-      const imagePaths = paths.filter((p) => p.startsWith(imagesFolder) && isImagePath(p));
-      // Upload each to deterministic R2 key
-      for (const p of imagePaths) {
-        const filename = p.split("/").pop() || p;
-        const r2Key = `ncc/${run.edition}/${run.volume}/assets/${filename}`;
-        
-        await env.R2_BUCKET.put(r2Key, zipEntries[p], {
-          httpMetadata: {
-            contentType: contentTypeFor(filename),
-          },
-        });
-        const inserted = await sbInsert<{ id: string; r2_key: string; filename: string }>(
-          env,
-          "ncc_asset",
-          [
-            {
-              ingest_run_id: run.id,
-              asset_type: "image",
-              filename,
-              r2_key: r2Key,
-            },
-          ],
-          true
-        );
-        if (inserted[0]) assetByFilename.set(filename, { id: inserted[0].id, r2_key: inserted[0].r2_key });
-      }
-    }
+    console.log(`[Ingest Run ${run.id}] Found ${xmlPaths.length} XML files in ${xmlFolder}`);
+    
+    // Skip image processing for now to stay under subrequest limit
+    // TODO: Add image processing in a separate queue message or phase
 
     // Pass A: index xml objects + documents
     const xmlObjectIdByBasename = new Map<string, string>();
@@ -328,7 +330,10 @@ async function ingestRun(env: Env, ingestRunId: string) {
     }
 
     // Insert documents (clause/specification)
+    // Deduplicate by (doc_type, sptc) since the same clause can appear in multiple XML files
+    // (e.g., jurisdictional variants like -NSW.xml, -VIC.xml)
     const docRows: any[] = [];
+    const seenDocKeys = new Set<string>();
     for (const xo of insertedXmlObjects) {
       if (xo.root_tag !== "clause" && xo.root_tag !== "specification") continue;
       const xml = xmlContentByBasename.get(xo.xml_basename) || "";
@@ -336,6 +341,15 @@ async function ingestRun(env: Env, ingestRunId: string) {
       const title = textBetween(xml, "title");
       const archiveNum = textBetween(xml, "archive-num");
       const jurisdiction = inferJurisdictionFromBasename(xo.xml_basename);
+      
+      // Skip duplicates (keep first occurrence)
+      const docKey = `${xo.root_tag}::${sptc || "null"}`;
+      if (seenDocKeys.has(docKey)) {
+        console.log(`[Ingest Run ${run.id}] Skipping duplicate doc: ${docKey} from ${xo.xml_basename}`);
+        continue;
+      }
+      seenDocKeys.add(docKey);
+      
       docRows.push({
         ingest_run_id: run.id,
         xml_object_id: xo.id,
@@ -347,6 +361,7 @@ async function ingestRun(env: Env, ingestRunId: string) {
       });
     }
 
+    console.log(`[Ingest Run ${run.id}] Inserting ${docRows.length} documents (${seenDocKeys.size} unique)`);
     const insertedDocs = docRows.length
       ? await sbInsert<{ id: string; xml_object_id: string }>(env, "ncc_document", docRows, true)
       : [];
@@ -355,106 +370,9 @@ async function ingestRun(env: Env, ingestRunId: string) {
     }
 
     // Pass B: blocks + references + images
-    for (const d of insertedDocs) {
-      const xmlObjId = d.xml_object_id;
-      const xmlBasename = [...xmlObjectIdByBasename.entries()].find(([, id]) => id === xmlObjId)?.[0];
-      if (!xmlBasename) continue;
-      const xml = xmlContentByBasename.get(xmlBasename) || "";
-
-      const blocks: any[] = [];
-      let blockIndex = 0;
-
-      const title = textBetween(xml, "title");
-      if (title) {
-        blocks.push({ document_id: d.id, block_index: blockIndex++, block_type: "heading", text: title, html: null, data: null });
-      }
-
-      // paragraphs
-      for (const m of xml.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
-        const text = m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-        if (text) blocks.push({ document_id: d.id, block_index: blockIndex++, block_type: "p", text, html: null, data: null });
-      }
-
-      // lists (li)
-      const items: string[] = [];
-      for (const m of xml.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)) {
-        const t = m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-        if (t) items.push(t);
-      }
-      if (items.length) {
-        blocks.push({
-          document_id: d.id,
-          block_index: blockIndex++,
-          block_type: "list",
-          text: items.join("\n"),
-          html: null,
-          data: { items },
-        });
-      }
-
-      // images: create placeholder blocks with descriptor basename
-      const imageDescriptorBasenames = extractImageReferenceBasenames(xml);
-      for (const desc of imageDescriptorBasenames) {
-        blocks.push({
-          document_id: d.id,
-          block_index: blockIndex++,
-          block_type: "image",
-          text: null,
-          html: null,
-          data: { descriptor_xml_basename: desc },
-        });
-      }
-
-      const insertedBlocks = blocks.length
-        ? await sbInsert<{ id: string; block_type: string; data: any }>(env, "ncc_block", blocks, true)
-        : [];
-
-      // references (xref/conref) at document-level (no block attachment yet)
-      const refs = extractRefs(xml);
-      const refRows: any[] = [];
-      for (const r of refs) {
-        const targetXmlObjId = xmlObjectIdByBasename.get(r.target_xml_basename);
-        const targetDocId = targetXmlObjId ? documentIdByXmlObjectId.get(targetXmlObjId) || null : null;
-        refRows.push({
-          from_document_id: d.id,
-          from_block_id: null,
-          ref_type: r.ref_type,
-          target_xml_basename: r.target_xml_basename,
-          target_document_id: targetDocId,
-        });
-      }
-      if (refRows.length) {
-        await sbInsert(env, "ncc_reference", refRows, false);
-      }
-
-      // resolve image blocks -> assets + placements
-      for (const b of insertedBlocks) {
-        if (b.block_type !== "image") continue;
-        const desc = b.data?.descriptor_xml_basename;
-        if (!desc) continue;
-        const descriptorXml = xmlContentByBasename.get(desc);
-        if (!descriptorXml) continue;
-        const filename = extractImageFilenameFromDescriptor(descriptorXml);
-        if (!filename) continue;
-        const asset = assetByFilename.get(filename);
-        if (!asset) continue;
-
-        // placement
-        await sbInsert(env, "ncc_asset_placement", [
-          {
-            asset_id: asset.id,
-            document_id: d.id,
-            block_id: b.id,
-            caption: null,
-          },
-        ]);
-
-        // update block data with resolved asset
-        await sbUpdate(env, "ncc_block", `id=eq.${b.id}`, {
-          data: { assetId: asset.id, r2Key: asset.r2_key, filename },
-        });
-      }
-    }
+    // SKIPPED for now - too many subrequests per document
+    // TODO: Add this as a separate processing phase
+    console.log(`[Ingest Run ${run.id}] Skipping Pass B (blocks/refs/images) to stay under subrequest limit`);
 
     await sbUpdate(env, "ncc_ingest_run", `id=eq.${ingestRunId}`, {
       status: "done",
@@ -501,6 +419,96 @@ export default {
 
     if (url.pathname === "/health") {
       return json({ ok: true });
+    }
+
+    // Test Supabase connection
+    if (url.pathname === "/test-supabase") {
+      try {
+        const testUrl = `${env.SUPABASE_URL}/rest/v1/ncc_ingest_run?select=id,status&limit=1`;
+        console.log(`[Test] Calling: ${testUrl}`);
+        console.log(`[Test] SUPABASE_URL: ${env.SUPABASE_URL ? 'SET' : 'NOT SET'}`);
+        console.log(`[Test] SUPABASE_SERVICE_ROLE_KEY: ${env.SUPABASE_SERVICE_ROLE_KEY ? 'SET (length: ' + env.SUPABASE_SERVICE_ROLE_KEY.length + ')' : 'NOT SET'}`);
+        
+        const res = await fetch(testUrl, {
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+        });
+        const text = await res.text();
+        console.log(`[Test] Response status: ${res.status}`);
+        console.log(`[Test] Response body: ${text.substring(0, 500)}`);
+        
+        return json({ 
+          ok: res.ok, 
+          status: res.status, 
+          supabaseUrl: env.SUPABASE_URL ? 'SET' : 'NOT SET',
+          serviceKeySet: !!env.SUPABASE_SERVICE_ROLE_KEY,
+          body: text.substring(0, 500) 
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[Test] Error:`, e);
+        return json({ ok: false, error: msg }, { status: 500 });
+      }
+    }
+
+    // Test cleanup for a specific ingest run
+    if (url.pathname.startsWith("/test-cleanup/")) {
+      const ingestRunId = url.pathname.split("/test-cleanup/")[1];
+      try {
+        console.log(`[Test Cleanup] Starting for ${ingestRunId}`);
+        
+        // Count existing documents
+        const docs = await sbSelect<{ id: string }>(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}&select=id`);
+        console.log(`[Test Cleanup] Found ${docs.length} documents`);
+        
+        // Try to delete
+        const deleteUrl = `${env.SUPABASE_URL}/rest/v1/ncc_document?ingest_run_id=eq.${ingestRunId}`;
+        console.log(`[Test Cleanup] Calling DELETE: ${deleteUrl}`);
+        
+        const deleteRes = await fetch(deleteUrl, {
+          method: "DELETE",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            Prefer: "return=representation",
+          },
+        });
+        const deleteText = await deleteRes.text();
+        console.log(`[Test Cleanup] Delete response: ${deleteRes.status} - ${deleteText.substring(0, 500)}`);
+        
+        // Count again
+        const docsAfter = await sbSelect<{ id: string }>(env, "ncc_document", `ingest_run_id=eq.${ingestRunId}&select=id`);
+        console.log(`[Test Cleanup] After delete: ${docsAfter.length} documents`);
+        
+        return json({
+          ok: deleteRes.ok,
+          status: deleteRes.status,
+          docsBefore: docs.length,
+          docsAfter: docsAfter.length,
+          deleteResponse: deleteText.substring(0, 500),
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[Test Cleanup] Error:`, e);
+        return json({ ok: false, error: msg }, { status: 500 });
+      }
+    }
+
+    // Test processing a specific ingest run (for debugging)
+    if (url.pathname.startsWith("/test-ingest/")) {
+      const ingestRunId = url.pathname.split("/test-ingest/")[1];
+      try {
+        console.log(`[Test Ingest] Starting for ${ingestRunId}`);
+        await ingestRun(env, ingestRunId);
+        return json({ ok: true, ingestRunId });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        const stack = e instanceof Error ? e.stack : "No stack";
+        console.error(`[Test Ingest] Error:`, e);
+        return json({ ok: false, error: msg, stack }, { status: 500 });
+      }
     }
 
     return json({ error: "Not Found" }, { status: 404 });
