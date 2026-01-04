@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     const publishedEditionIds = publishedEditions.map(e => e.id);
-    const editionNameMap = new Map(publishedEditions.map(e => [e.id, e.name]));
+    const editionNameMap = new Map<string, string>(publishedEditions.map(e => [e.id, e.name]));
 
     // Filter by specific edition if provided
     const targetEditions = editionId && editionId !== "all" 
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     const ingestRunIds = ingestRuns.map((r: { id: string }) => r.id);
-    const runEditionMap = new Map(ingestRuns.map((r: { id: string; edition: string }) => [r.id, r.edition]));
+    const runEditionMap = new Map<string, string>(ingestRuns.map((r: { id: string; edition: string }) => [r.id, r.edition]));
 
     // Build the document query
     let docQuery = (supabase as AnySupabase)
