@@ -135,3 +135,4 @@ create policy "Admins can manage asset placements" on ncc_asset_placement
   for all using (is_admin());
 
 
+

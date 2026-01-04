@@ -897,3 +897,4 @@ COMMENT ON COLUMN ncc_editions.ai_enabled IS 'Whether AI assistant can use this 
 COMMENT ON COLUMN ncc_editions.guidance_only IS 'Whether this edition is marked as guidance only during early adoption';
 COMMENT ON COLUMN ncc_editions.internal_signoff IS 'Whether internal review has been completed';
 
+
