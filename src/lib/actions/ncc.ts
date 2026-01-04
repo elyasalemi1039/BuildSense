@@ -315,8 +315,31 @@ export async function publishEdition(editionId: string): Promise<{ error: string
       return { error: "Edition not found" };
     }
 
-    if (edition.status !== "indexed" && edition.status !== "parsed") {
-      return { error: `Edition must be parsed/indexed before publishing. Current status: ${edition.status}` };
+    // Check if edition is already published
+    if (edition.status === "published") {
+      return { error: "Edition is already published" };
+    }
+
+    // For the new pipeline: check if all ingest runs are done
+    const { data: ingestRuns, error: runsError } = await (supabase as AnySupabase)
+      .from("ncc_ingest_run")
+      .select("id, status")
+      .eq("edition", editionId);
+
+    if (runsError) {
+      return { error: "Failed to check ingest runs" };
+    }
+
+    // Must have at least one ingest run
+    if (!ingestRuns || ingestRuns.length === 0) {
+      return { error: "No files have been uploaded. Please upload NCC files first." };
+    }
+
+    // All runs must be done
+    const notDone = ingestRuns.filter((r: { status: string }) => r.status !== "done");
+    if (notDone.length > 0) {
+      const statuses = notDone.map((r: { status: string }) => r.status).join(", ");
+      return { error: `All ingest runs must be completed. ${notDone.length} run(s) still pending: ${statuses}` };
     }
 
     // Start a transaction-like operation
