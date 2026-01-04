@@ -406,6 +406,7 @@ export default function EditionDetailPage() {
   const canDelete = edition.status !== "published";
   const hasUploadedFile = !!edition.source_r2_key;
   const pendingFiles = filesToUpload.filter(f => f.status === "pending");
+  const queuedCount = ingestRuns.filter(r => r.status === "queued").length;
   const allRunsDone = ingestRuns.length > 0 && ingestRuns.every(r => r.status === "done");
 
   return (
@@ -686,6 +687,40 @@ export default function EditionDetailPage() {
               )}
               Refresh
             </Button>
+
+            {queuedCount > 0 && (
+              <Button
+                onClick={async () => {
+                  setActionLoading("retry");
+                  try {
+                    const res = await fetch(`/api/admin/ncc/${editionId}/retry-ingest`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    const json = await res.json();
+                    if (!res.ok) {
+                      toast.error(json?.error || "Failed to retry");
+                    } else {
+                      toast.success(json?.message || "Retried queued runs");
+                      await loadIngestRuns();
+                    }
+                  } catch (e) {
+                    toast.error("Failed to retry queued runs");
+                  } finally {
+                    setActionLoading(null);
+                  }
+                }}
+                variant="outline"
+                disabled={actionLoading === "retry"}
+              >
+                {actionLoading === "retry" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Retry Queued Runs ({queuedCount})
+              </Button>
+            )}
 
             <Button 
               onClick={handlePublish} 
