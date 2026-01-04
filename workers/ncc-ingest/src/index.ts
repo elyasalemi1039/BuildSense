@@ -351,7 +351,7 @@ async function ingestRun(env: Env, ingestRunId: string) {
         root_tag: rootTag,
         outputclass,
         sha256: sha,
-        raw_xml: null,
+        raw_xml: xml, // Store the raw XML for display in UI
       });
     }
 
