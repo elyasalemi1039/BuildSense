@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Filter, BookOpen, FileText, Loader2, Sparkles, ChevronDown, ImageIcon, X } from "lucide-react";
+import Link from "next/link";
+import { Search, Filter, BookOpen, FileText, Loader2, Sparkles, ChevronDown, ImageIcon, X, ChevronRight } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -321,39 +322,39 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {results.map((result) => (
-                <Card 
-                  key={result.id} 
-                  className="bg-slate-900/50 border-slate-800 hover:border-amber-500/50 transition-colors cursor-pointer group"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-4 w-4 text-amber-500" />
-                          {result.sptc && (
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 font-mono">
-                              {result.sptc}
+                <Link key={result.id} href={`/dashboard/clause/${result.id}`}>
+                  <Card className="bg-slate-900/50 border-slate-800 hover:border-amber-500/50 transition-all cursor-pointer group hover:shadow-lg hover:shadow-amber-500/5">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-amber-500" />
+                            {result.sptc && (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 font-mono">
+                                {result.sptc}
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="bg-slate-800 text-slate-400 capitalize">
+                              {result.doc_type}
                             </Badge>
-                          )}
-                          <Badge variant="secondary" className="bg-slate-800 text-slate-400 capitalize">
-                            {result.doc_type}
-                          </Badge>
-                          {result.jurisdiction && (
-                            <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
-                              {result.jurisdiction}
-                            </Badge>
-                          )}
+                            {result.jurisdiction && (
+                              <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
+                                {result.jurisdiction}
+                              </Badge>
+                            )}
+                          </div>
+                          <h3 className="font-medium text-white group-hover:text-amber-400 transition-colors line-clamp-2">
+                            {result.title || "Untitled"}
+                          </h3>
+                          <p className="text-sm text-slate-500 mt-1">
+                            {result.edition_name}
+                          </p>
                         </div>
-                        <h3 className="font-medium text-white group-hover:text-amber-400 transition-colors line-clamp-2">
-                          {result.title || "Untitled"}
-                        </h3>
-                        <p className="text-sm text-slate-500 mt-1">
-                          {result.edition_name}
-                        </p>
+                        <ChevronRight className="h-5 w-5 text-slate-600 group-hover:text-amber-500 transition-colors shrink-0 mt-1" />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}
