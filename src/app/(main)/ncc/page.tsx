@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Filter, BookOpen, FileText, Loader2, Sparkles, ChevronDown } from "lucide-react";
+import Image from "next/image";
+import { Search, Filter, BookOpen, FileText, Loader2, Sparkles, ChevronDown, ImageIcon, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Edition {
   id: string;
@@ -44,6 +50,12 @@ interface AIInsight {
   related_clauses: string[];
 }
 
+interface NCCImage {
+  id: string;
+  filename: string;
+  url: string;
+}
+
 export default function NCCSearchPage() {
   const [editions, setEditions] = useState<Edition[]>([]);
   const [selectedEdition, setSelectedEdition] = useState<string>("all");
@@ -55,6 +67,9 @@ export default function NCCSearchPage() {
   const [aiInsight, setAiInsight] = useState<AIInsight | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [images, setImages] = useState<NCCImage[]>([]);
+  const [selectedImage, setSelectedImage] = useState<NCCImage | null>(null);
+  const [imagesLoading, setImagesLoading] = useState(false);
 
   // Load editions on mount
   useEffect(() => {
@@ -70,6 +85,26 @@ export default function NCCSearchPage() {
       }
     }
     loadEditions();
+  }, []);
+
+  const loadImages = useCallback(async (editionId: string) => {
+    if (!editionId || editionId === "all") {
+      setImages([]);
+      return;
+    }
+    
+    setImagesLoading(true);
+    try {
+      const res = await fetch(`/api/ncc/images?edition=${editionId}&limit=12`);
+      const data = await res.json();
+      if (data.images) {
+        setImages(data.images);
+      }
+    } catch (e) {
+      console.error("Failed to load images:", e);
+    } finally {
+      setImagesLoading(false);
+    }
   }, []);
 
   const handleSearch = useCallback(async () => {
@@ -97,13 +132,19 @@ export default function NCCSearchPage() {
         if (searchQuery.trim() && data.results.length > 0) {
           getAIInsight(searchQuery, data.results.slice(0, 5));
         }
+        
+        // Load images for the first result's edition, or selected edition
+        const targetEdition = selectedEdition !== "all" ? selectedEdition : data.results[0]?.edition_id;
+        if (targetEdition) {
+          loadImages(targetEdition);
+        }
       }
     } catch (e) {
       console.error("Search failed:", e);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedEdition, docTypeFilter]);
+  }, [searchQuery, selectedEdition, docTypeFilter, loadImages]);
 
   const getAIInsight = async (query: string, topResults: SearchResult[]) => {
     setAiLoading(true);
@@ -319,6 +360,67 @@ export default function NCCSearchPage() {
           )}
         </div>
       )}
+
+      {/* Images Gallery */}
+      {hasSearched && images.length > 0 && (
+        <Card className="bg-slate-900/50 border-slate-800">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-amber-500" />
+              <span className="font-semibold text-white">Related Images</span>
+              {imagesLoading && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+              <Badge variant="secondary" className="bg-slate-800 text-slate-400 ml-auto">
+                {images.length} images
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {images.map((image) => (
+                <button
+                  key={image.id}
+                  onClick={() => setSelectedImage(image)}
+                  className="aspect-square rounded-lg overflow-hidden bg-slate-800 border border-slate-700 hover:border-amber-500/50 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                >
+                  <img
+                    src={image.url}
+                    alt={image.filename}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Image Modal */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl bg-slate-900 border-slate-700 p-0">
+          <DialogTitle className="sr-only">
+            {selectedImage?.filename || "Image"}
+          </DialogTitle>
+          {selectedImage && (
+            <div className="relative">
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <img
+                src={selectedImage.url}
+                alt={selectedImage.filename}
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                <p className="text-white text-sm font-mono">{selectedImage.filename}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Empty State - Before Search */}
       {!hasSearched && (

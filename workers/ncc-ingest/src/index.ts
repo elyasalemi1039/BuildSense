@@ -291,8 +291,45 @@ async function ingestRun(env: Env, ingestRunId: string) {
     const xmlPaths = paths.filter((p) => p.startsWith(xmlFolder) && isXmlPath(p));
     console.log(`[Ingest Run ${run.id}] Found ${xmlPaths.length} XML files in ${xmlFolder}`);
     
-    // Skip image processing for now to stay under subrequest limit
-    // TODO: Add image processing in a separate queue message or phase
+    // Find and process images
+    const imagesFolder = findBestFolder(paths.filter(isImagePath), ["images", "image"]);
+    const assetByFilename = new Map<string, { id: string; r2_key: string }>();
+    
+    if (imagesFolder) {
+      const imagePaths = paths.filter((p) => p.startsWith(imagesFolder) && isImagePath(p));
+      console.log(`[Ingest Run ${run.id}] Found ${imagePaths.length} images in ${imagesFolder}`);
+      
+      // Upload all images to R2 first (R2 binding ops don't count toward subrequest limit)
+      const assetRows: any[] = [];
+      for (const p of imagePaths) {
+        const filename = p.split("/").pop() || p;
+        const r2Key = `ncc/${run.edition}/${run.volume}/assets/${filename}`;
+        
+        // Upload to R2
+        await env.R2_BUCKET.put(r2Key, zipEntries[p], {
+          httpMetadata: { contentType: contentTypeFor(filename) },
+        });
+        
+        assetRows.push({
+          ingest_run_id: run.id,
+          asset_type: "image",
+          filename,
+          r2_key: r2Key,
+        });
+      }
+      
+      // Batch insert all assets in ONE database call
+      if (assetRows.length > 0) {
+        console.log(`[Ingest Run ${run.id}] Inserting ${assetRows.length} assets`);
+        const insertedAssets = await sbInsert<{ id: string; filename: string; r2_key: string }>(
+          env, "ncc_asset", assetRows, true
+        );
+        for (const a of insertedAssets) {
+          assetByFilename.set(a.filename, { id: a.id, r2_key: a.r2_key });
+        }
+        console.log(`[Ingest Run ${run.id}] Inserted ${insertedAssets.length} assets`);
+      }
+    }
 
     // Pass A: index xml objects + documents
     const xmlObjectIdByBasename = new Map<string, string>();
