@@ -171,3 +171,4 @@ https://assets.buildsense.com/ncc/.../assets/image-1.jpeg
 ✅ All metadata is in **Supabase** for fast queries
 
 
+

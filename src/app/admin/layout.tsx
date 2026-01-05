@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { isAdmin } from "@/lib/auth/admin";
-import { Shield, Home, FileText, Settings } from "lucide-react";
+import { Shield, Home, FileText, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
@@ -34,6 +34,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 <Button variant="ghost" size="sm">
                   <FileText className="mr-2 h-4 w-4" />
                   NCC Editions
+                </Button>
+              </Link>
+              <Link href="/admin/checklist-templates">
+                <Button variant="ghost" size="sm">
+                  <CheckSquare className="mr-2 h-4 w-4" />
+                  Checklists
                 </Button>
               </Link>
             </nav>

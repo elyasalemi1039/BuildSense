@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { BookOpen, Search, Shield, LogOut, User, Settings } from "lucide-react";
+import { BookOpen, Search, Shield, LogOut, User, Settings, FolderKanban, CheckSquare, Crown } from "lucide-react";
 
 import { getCurrentUser } from "@/lib/actions/auth";
 import { isAdmin } from "@/lib/auth/admin";
+import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
@@ -23,8 +25,20 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect("/login");
   }
 
+  const supabase = await createClient();
+  
+  // Fetch user profile to get subscription tier
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("subscription_tier, full_name")
+    .eq("id", user.id)
+    .single();
+  
+  const subscriptionTier = profile?.subscription_tier || "free";
+  const isPro = subscriptionTier === "pro" || subscriptionTier === "enterprise";
+  
   const userIsAdmin = await isAdmin();
-  const initials = user.email?.slice(0, 2).toUpperCase() || "U";
+  const initials = profile?.full_name?.slice(0, 2).toUpperCase() || user.email?.slice(0, 2).toUpperCase() || "U";
 
   return (
     <div className="flex min-h-screen bg-slate-950">
@@ -38,6 +52,22 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <span className="font-bold text-lg text-white">BuildSense</span>
         </div>
 
+        {/* Subscription Badge */}
+        <div className="px-4 py-2">
+          {isPro ? (
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
+              <Crown className="h-3 w-3 mr-1" />
+              Pro
+            </Badge>
+          ) : (
+            <Link href="/dashboard/upgrade">
+              <Badge variant="outline" className="border-slate-700 text-slate-400 hover:border-amber-500 hover:text-amber-400 cursor-pointer transition-colors">
+                Free Plan
+              </Badge>
+            </Link>
+          )}
+        </div>
+
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
           <Link
@@ -47,6 +77,39 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             <Search className="h-5 w-5" />
             <span className="font-medium">NCC Search</span>
           </Link>
+          
+          {/* Pro Features */}
+          {isPro ? (
+            <>
+              <Link
+                href="/dashboard/projects"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+              >
+                <FolderKanban className="h-5 w-5" />
+                <span className="font-medium">Projects</span>
+              </Link>
+              <Link
+                href="/dashboard/checklists"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+              >
+                <CheckSquare className="h-5 w-5" />
+                <span className="font-medium">Checklists</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-600 cursor-not-allowed">
+                <FolderKanban className="h-5 w-5" />
+                <span className="font-medium">Projects</span>
+                <Crown className="h-3 w-3 ml-auto text-amber-500/50" />
+              </div>
+              <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-600 cursor-not-allowed">
+                <CheckSquare className="h-5 w-5" />
+                <span className="font-medium">Checklists</span>
+                <Crown className="h-3 w-3 ml-auto text-amber-500/50" />
+              </div>
+            </>
+          )}
         </nav>
 
         {/* Footer */}
